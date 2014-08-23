@@ -36,7 +36,7 @@ pub trait EntityProcess
 
 pub trait BulkEntityProcess
 {
-    fn process(&self, &Map<uint, Entity>, &World, &mut Components);
+    fn process(&self, Vec<&Entity>, &World, &mut Components);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -85,7 +85,7 @@ impl System for BulkEntitySystem
 {
     fn process(&self, world: &World, c: &mut Components)
     {
-        self.inner.process(&self.interested, world, c);
+        self.inner.process(FromIterator::from_iter(self.interested.values()), world, c);
     }
 
     fn preprocess(&mut self, w: &World)

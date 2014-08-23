@@ -1,9 +1,8 @@
 
 //! Management of entities, components, systems, and managers
 
-use std::cell::RefCell;
+use std::cell::{RefMut, RefCell};
 use std::collections::HashMap;
-use std::mem;
 
 use {Component, ComponentId};
 use Entity;
@@ -16,7 +15,7 @@ use entity::EntityManager;
 pub struct World
 {
     entities: RefCell<EntityManager>,
-    components: ComponentManager,
+    components: RefCell<ComponentManager>,
     systems: RefCell<SystemManager>,
     mut_managers: Vec<RefCell<Box<MutableManager>>>,
     managers: Vec<Box<Manager>>,
@@ -25,7 +24,7 @@ pub struct World
 
 pub struct Components<'a>
 {
-    inner: &'a mut ComponentManager,
+    inner: RefMut<'a, ComponentManager>,
 }
 
 struct ComponentManager
@@ -46,7 +45,7 @@ impl World
         World
         {
             entities: RefCell::new(EntityManager::new()),
-            components: ComponentManager::new(),
+            components: RefCell::new(ComponentManager::new()),
             systems: RefCell::new(SystemManager::new()),
             mut_managers: Vec::new(),
             managers: Vec::new(),
@@ -115,7 +114,7 @@ impl World
         {
             fail!("World is locked. Components may not be registered")
         }
-        self.components.register(ComponentList::new(Phantom::<T>));
+        self.components.borrow_mut().register(ComponentList::new(Phantom::<T>));
     }
 
     /// Registers a system.
@@ -178,9 +177,7 @@ impl World
     {
         Components
         {
-            inner: unsafe {
-                mem::transmute(&self.components)
-            },
+            inner: self.components.borrow_mut()
         }
     }
 
@@ -279,7 +276,7 @@ impl World
             self.deactivate_entity(entity);
         }
         self.entities.borrow_mut().delete_entity(entity);
-        self.components.delete_entity(entity);
+        self.components.borrow_mut().delete_entity(entity);
         for ref manager in self.mut_managers.iter()
         {
             manager.borrow_mut().removed(entity, self);
@@ -297,7 +294,7 @@ impl World
     {
         self.entities.borrow().is_valid(entity)
         && !self.is_active(entity)
-        && self.components.add::<T>(entity, component)
+        && self.components.borrow_mut().add::<T>(entity, component)
     }
 
     /// Removes a component from an entity.
@@ -307,7 +304,7 @@ impl World
     {
         self.entities.borrow().is_valid(entity)
         && !self.is_active(entity)
-        && self.components.remove::<T>(entity)
+        && self.components.borrow_mut().remove::<T>(entity)
     }
 
     /// Set the value of a component for an entity
@@ -316,7 +313,7 @@ impl World
     pub fn set_component<T: Component>(&mut self, entity: &Entity, component: T) -> bool
     {
         self.entities.borrow().is_valid(entity)
-        && self.components.set::<T>(entity, component)
+        && self.components.borrow_mut().set::<T>(entity, component)
     }
 
     /// Returns the value of a component for an entity (or None)
@@ -324,7 +321,7 @@ impl World
     {
         if self.entities.borrow().is_valid(entity)
         {
-            self.components.get::<T>(entity)
+            self.components.borrow().get::<T>(entity)
         }
         else
         {
@@ -335,33 +332,7 @@ impl World
     /// Returns if an entity contains a component.
     pub fn has_component(&self, entity: &Entity, id: ComponentId) -> bool
     {
-        self.components.has(entity, id)
-    }
-
-    /// Returns a reference to an entity's component. (or None)
-    pub fn borrow_component<T: Component>(&self, entity: &Entity) -> Option<&T>
-    {
-        if self.is_active(entity)
-        {
-            self.components.borrow::<T>(entity)
-        }
-        else
-        {
-            None
-        }
-    }
-
-    /// Returns a mutable reference to an entity's component. (or None)
-    pub fn borrow_mut_component<T: Component>(&mut self, entity: &Entity) -> Option<&mut T>
-    {
-        if self.is_active(entity)
-        {
-            self.components.borrow_mut::<T>(entity)
-        }
-        else
-        {
-            None
-        }
+        self.components.borrow().has(entity, id)
     }
 }
 
@@ -488,11 +459,6 @@ impl ComponentManager
         self.components[id].has(entity)
     }
 
-    fn borrow<T:Component>(&self, entity: &Entity) -> Option<&T>
-    {
-        self.components[Component::cid(Phantom::<T>)].borrow::<T>(entity)
-    }
-
     fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
         self.components.get_mut(&Component::cid(Phantom::<T>)).borrow_mut::<T>(entity)
@@ -506,12 +472,7 @@ impl ComponentManager
 
 impl<'a> Components<'a>
 {
-    pub fn borrow<T:Component>(&self, entity: &Entity) -> Option<&T>
-    {
-        self.inner.borrow::<T>(entity)
-    }
-
-    pub fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
         self.inner.borrow_mut::<T>(entity)
     }
