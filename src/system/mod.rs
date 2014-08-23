@@ -41,6 +41,25 @@ pub trait System
     }
 }
 
+/// Generic passive system type.
+pub trait Passive
+{
+    /// Process the world.
+    fn process(&mut self, &World);
+
+    /// Optional method called when an entity is activated.
+    fn activated(&mut self, _: &Entity, _: &World)
+    {
+
+    }
+
+    /// Optional method called when an entity is deactivated.
+    fn deactivated(&mut self, _: &Entity)
+    {
+
+    }
+}
+
 /// System which operates every certain number of updates.
 pub struct IntervalSystem
 {

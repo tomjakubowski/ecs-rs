@@ -9,7 +9,7 @@ use {Component, ComponentId};
 use Entity;
 use {Manager, MutableManager};
 use Phantom;
-use System;
+use {Passive, System};
 use component::ComponentList;
 use entity::EntityManager;
 
@@ -36,6 +36,7 @@ struct ComponentManager
 struct SystemManager
 {
     systems: Vec<Box<System>>,
+    passive: HashMap<&'static str, Box<Passive>>,
 }
 
 impl World
@@ -131,6 +132,20 @@ impl World
         self.systems.borrow_mut().register(sys);
     }
 
+    /// Registers a passive system.
+    ///
+    /// # Failure
+    ///
+    /// If the world has been finalised
+    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    {
+        if self.locked
+        {
+            fail!("World is locked. Systems may not be registered")
+        }
+        self.systems.borrow_mut().register_passive(key, sys);
+    }
+
     /// Updates the world by processing all systems.
     ///
     /// # Failure
@@ -143,6 +158,20 @@ impl World
             fail!("World must be locked before updating")
         }
         self.systems.borrow_mut().update(self, self.components());
+    }
+
+    /// Updates the passive system corresponding to `key`
+    ///
+    /// # Failure
+    ///
+    /// If the world has not been finalised
+    pub fn update_passive(&mut self, key: &'static str)
+    {
+        if !self.locked
+        {
+            fail!("World must be locked before updating")
+        }
+        self.systems.borrow_mut().update_passive(key, self);
     }
 
     fn components(&self) -> Components
@@ -343,12 +372,18 @@ impl SystemManager
         SystemManager
         {
             systems: Vec::new(),
+            passive: HashMap::new(),
         }
     }
 
     pub fn register(&mut self, sys: Box<System>)
     {
         self.systems.push(sys);
+    }
+
+    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    {
+        self.passive.insert(key, sys);
     }
 
     pub fn update(&mut self, world: &World, mut components: Components)
@@ -365,6 +400,11 @@ impl SystemManager
         {
             sys.postprocess(world);
         }
+    }
+
+    pub fn update_passive(&mut self, key: &'static str, world: &World)
+    {
+        self.passive.get_mut(&key).process(world);
     }
 }
 
