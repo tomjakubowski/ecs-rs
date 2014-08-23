@@ -426,11 +426,19 @@ impl MutableManager for SystemManager
         {
             sys.activated(e, w);
         }
+        for (_, sys) in self.passive.mut_iter()
+        {
+            sys.activated(e, w);
+        }
     }
 
     fn deactivated(&mut self, e: &Entity, _: &World)
     {
         for sys in self.systems.mut_iter()
+        {
+            sys.deactivated(e);
+        }
+        for (_, sys) in self.passive.mut_iter()
         {
             sys.deactivated(e);
         }
