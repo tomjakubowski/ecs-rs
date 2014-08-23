@@ -179,7 +179,7 @@ impl World
         Components
         {
             inner: unsafe {
-                mem::transmute(&self.components())
+                mem::transmute(&self.components)
             },
         }
     }
