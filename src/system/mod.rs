@@ -4,6 +4,7 @@
 pub use self::entitysystem::{BulkEntitySystem, BulkEntityProcess};
 pub use self::entitysystem::{EntitySystem, EntityProcess};
 
+use Components;
 use Entity;
 use World;
 
@@ -13,7 +14,7 @@ pub mod entitysystem;
 pub trait System
 {
     /// Process the world.
-    fn process(&self, &World);
+    fn process(&self, &World, &mut Components);
 
     /// Optional method called before processing.
     fn preprocess(&mut self, _: &World)
@@ -64,11 +65,11 @@ impl IntervalSystem
 
 impl System for IntervalSystem
 {
-    fn process(&self, w: &World)
+    fn process(&self, w: &World, c: &mut Components)
     {
         if self.ticker == self.interval
         {
-            self.inner.process(w);
+            self.inner.process(w, c);
         }
     }
 

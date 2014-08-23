@@ -3,6 +3,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::mem;
 
 use {Component, ComponentId};
 use Entity;
@@ -20,6 +21,11 @@ pub struct World
     mut_managers: Vec<RefCell<Box<MutableManager>>>,
     managers: Vec<Box<Manager>>,
     locked: bool,
+}
+
+pub struct Components<'a>
+{
+    inner: &'a mut ComponentManager,
 }
 
 struct ComponentManager
@@ -136,7 +142,17 @@ impl World
         {
             fail!("World must be locked before updating")
         }
-        self.systems.borrow_mut().update(self);
+        self.systems.borrow_mut().update(self, self.components());
+    }
+
+    fn components(&self) -> Components
+    {
+        Components
+        {
+            inner: unsafe {
+                mem::transmute(&self.components())
+            },
+        }
     }
 
     /// Creates an entity
@@ -335,7 +351,7 @@ impl SystemManager
         self.systems.push(sys);
     }
 
-    pub fn update(&mut self, world: &World)
+    pub fn update(&mut self, world: &World, mut components: Components)
     {
         for sys in self.systems.mut_iter()
         {
@@ -343,7 +359,7 @@ impl SystemManager
         }
         for sys in self.systems.iter()
         {
-            sys.process(world);
+            sys.process(world, &mut components);
         }
         for sys in self.systems.mut_iter()
         {
@@ -437,5 +453,18 @@ impl ComponentManager
     fn remove<T:Component>(&mut self, entity: &Entity) -> bool
     {
         self.components.get_mut(&Component::cid(Phantom::<T>)).rm(entity)
+    }
+}
+
+impl<'a> Components<'a>
+{
+    pub fn borrow<T:Component>(&self, entity: &Entity) -> Option<&T>
+    {
+        self.inner.borrow::<T>(entity)
+    }
+
+    pub fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    {
+        self.inner.borrow_mut::<T>(entity)
     }
 }

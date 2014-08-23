@@ -4,13 +4,14 @@
 use std::collections::TrieMap;
 
 use Aspect;
+use Components;
 use Entity;
 use System;
 use World;
 
 pub trait EntityProcess
 {
-    fn process(&self, &Entity, &World);
+    fn process(&self, &Entity, &World, &mut Components);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -35,7 +36,7 @@ pub trait EntityProcess
 
 pub trait BulkEntityProcess
 {
-    fn process(&self, entities: &Map<uint, Entity>, world: &World);
+    fn process(&self, &Map<uint, Entity>, &World, &mut Components);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -82,10 +83,9 @@ impl BulkEntitySystem
 
 impl System for BulkEntitySystem
 {
-
-    fn process(&self, world: &World)
+    fn process(&self, world: &World, c: &mut Components)
     {
-        self.inner.process(&self.interested, world);
+        self.inner.process(&self.interested, world, c);
     }
 
     fn preprocess(&mut self, w: &World)
@@ -140,11 +140,11 @@ impl EntitySystem
 
 impl System for EntitySystem
 {
-    fn process(&self, world: &World)
+    fn process(&self, world: &World, c: &mut Components)
     {
         for e in self.interested.values()
         {
-            self.inner.process(e, world);
+            self.inner.process(e, world, c);
         }
     }
 

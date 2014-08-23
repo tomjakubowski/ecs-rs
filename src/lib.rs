@@ -43,7 +43,7 @@ pub use component::{Component, ComponentId};
 pub use entity::Entity;
 pub use manager::{Manager, MutableManager};
 pub use system::System;
-pub use world::World;
+pub use world::{Components, World};
 
 pub mod buffer;
 
