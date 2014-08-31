@@ -17,8 +17,8 @@ pub struct World
     entities: RefCell<EntityManager>,
     components: RefCell<ComponentManager>,
     systems: RefCell<SystemManager>,
-    mut_managers: Vec<RefCell<Box<MutableManager>>>,
-    managers: Vec<Box<Manager>>,
+    mut_managers: Vec<RefCell<Box<MutableManager+'static>>>,
+    managers: Vec<Box<Manager+'static>>,
     locked: bool,
 }
 
@@ -34,8 +34,8 @@ struct ComponentManager
 
 struct SystemManager
 {
-    systems: Vec<Box<System>>,
-    passive: HashMap<&'static str, Box<Passive>>,
+    systems: Vec<Box<System+'static>>,
+    passive: HashMap<&'static str, Box<Passive+'static>>,
 }
 
 impl World
@@ -79,7 +79,7 @@ impl World
     ///
     /// If the world has been finalised
     #[experimental]
-    pub fn register_manager_mut(&mut self, manager: Box<MutableManager>)
+    pub fn register_manager_mut(&mut self, manager: Box<MutableManager+'static>)
     {
         if self.locked
         {
@@ -94,7 +94,7 @@ impl World
     ///
     /// If the world has been finalised
     #[experimental]
-    pub fn register_manager(&mut self, manager: Box<Manager>)
+    pub fn register_manager(&mut self, manager: Box<Manager+'static>)
     {
         if self.locked
         {
@@ -122,7 +122,7 @@ impl World
     /// # Failure
     ///
     /// If the world has been finalised
-    pub fn register_system(&mut self, sys: Box<System>)
+    pub fn register_system(&mut self, sys: Box<System+'static>)
     {
         if self.locked
         {
@@ -136,7 +136,7 @@ impl World
     /// # Failure
     ///
     /// If the world has been finalised
-    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive+'static>)
     {
         if self.locked
         {
@@ -347,12 +347,12 @@ impl SystemManager
         }
     }
 
-    pub fn register(&mut self, sys: Box<System>)
+    pub fn register(&mut self, sys: Box<System+'static>)
     {
         self.systems.push(sys);
     }
 
-    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive+'static>)
     {
         self.passive.insert(key, sys);
     }

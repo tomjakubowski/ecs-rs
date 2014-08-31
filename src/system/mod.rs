@@ -65,13 +65,13 @@ pub struct IntervalSystem
 {
     interval: u8,
     ticker: u8,
-    inner: Box<System>,
+    inner: Box<System+'static>,
 }
 
 impl IntervalSystem
 {
     /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: Box<System>, interval: u8) -> IntervalSystem
+    pub fn new(system: Box<System+'static>, interval: u8) -> IntervalSystem
     {
         IntervalSystem
         {

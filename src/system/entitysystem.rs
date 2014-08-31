@@ -64,13 +64,13 @@ pub struct BulkEntitySystem
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<BulkEntityProcess>,
+    inner: Box<BulkEntityProcess+'static>,
 }
 
 impl BulkEntitySystem
 {
     /// Return a new entity system with the specified bulk process.
-    pub fn new(inner: Box<BulkEntityProcess>, aspect: Aspect) -> BulkEntitySystem
+    pub fn new(inner: Box<BulkEntityProcess+'static>, aspect: Aspect) -> BulkEntitySystem
     {
         BulkEntitySystem
         {
@@ -121,13 +121,13 @@ pub struct EntitySystem
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<EntityProcess>,
+    inner: Box<EntityProcess+'static>,
 }
 
 impl EntitySystem
 {
     /// Return a new entity system with the specified process.
-    pub fn new(inner: Box<EntityProcess>, aspect: Aspect) -> EntitySystem
+    pub fn new(inner: Box<EntityProcess+'static>, aspect: Aspect) -> EntitySystem
     {
         EntitySystem
         {
