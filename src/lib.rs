@@ -34,8 +34,6 @@
 #![feature(macro_rules, phase)]
 #![unstable]
 
-#[phase(plugin)]
-extern crate lazy_static;
 extern crate uuid;
 
 pub use aspect::Aspect;
@@ -91,13 +89,38 @@ mod macros
     ///
     /// `Component` is automatically implemented for the struct.
     #[macro_export]
-    macro_rules! component(
+    macro_rules! component {
         ($ID:ident : $Name:ident { $($field:ident : $ty:ty),+ }) =>
         (
-            lazy_static! { // No point in recalculating this all the time.
-                static ref $ID: ::ecs::ComponentId = {
-                    ::std::hash::hash(&stringify!($ID $Name))
-                };
+            // This little bit here was extracted and modified from lazy-static.rs
+            // https://github.com/Kimundi/lazy-static.rs
+            // Used for computing the hash of the type name just once.
+            #[allow(dead_code)]
+            #[allow(non_camel_case_types)]
+            struct $ID {__private_field: ()}
+            #[allow(visible_private_types)]
+            pub static $ID: $ID = $ID {__private_field: ()};
+            impl Deref<::ecs::ComponentId> for $ID {
+                fn deref(&self) -> &::ecs::ComponentId {
+                    use std::sync::{Once, ONCE_INIT};
+                    use std::mem::transmute;
+
+                    type CID = ::ecs::ComponentId;
+
+                    #[inline(always)]
+                    fn require_sync(_: &CID) { }
+
+                    unsafe {
+                        static mut s: *const CID = 0 as *const CID;
+                        static mut ONCE: Once = ONCE_INIT;
+                        ONCE.doit(|| {
+                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
+                        });
+                        let static_ref = &*s;
+                        require_sync(static_ref);
+                        static_ref
+                    }
+                }
             }
 
             #[deriving(Clone, Default, PartialEq, Show)]
@@ -116,10 +139,35 @@ mod macros
         );
         ($ID: ident : $Name: ident) =>
         (
-            lazy_static! { // No point in recalculating this all the time.
-                static ref $ID: ::ecs::ComponentId = {
-                    ::std::hash::hash(&stringify!($ID $Name))
-                };
+            // This little bit here was extracted and modified from lazy-static.rs
+            // https://github.com/Kimundi/lazy-static.rs
+            // Used for computing the hash of the type name just once.
+            #[allow(dead_code)]
+            #[allow(non_camel_case_types)]
+            struct $ID {__private_field: ()}
+            #[allow(visible_private_types)]
+            pub static $ID: $ID = $ID {__private_field: ()};
+            impl Deref<::ecs::ComponentId> for $ID {
+                fn deref(&self) -> &::ecs::ComponentId {
+                    use std::sync::{Once, ONCE_INIT};
+                    use std::mem::transmute;
+
+                    type CID = ::ecs::ComponentId;
+
+                    #[inline(always)]
+                    fn require_sync(_: &CID) { }
+
+                    unsafe {
+                        static mut s: *const CID = 0 as *const CID;
+                        static mut ONCE: Once = ONCE_INIT;
+                        ONCE.doit(|| {
+                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
+                        });
+                        let static_ref = &*s;
+                        require_sync(static_ref);
+                        static_ref
+                    }
+                }
             }
 
             #[deriving(Clone, Default, PartialEq, Show)]
@@ -133,5 +181,5 @@ mod macros
                 }
             }
         )
-    )
+    }
 }
