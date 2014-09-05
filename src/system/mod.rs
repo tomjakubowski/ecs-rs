@@ -11,7 +11,7 @@ use World;
 pub mod entitysystem;
 
 /// Generic system type.
-pub trait System
+pub trait System: 'static
 {
     /// Process the world.
     fn process(&self, &World, &mut Components);
@@ -42,7 +42,7 @@ pub trait System
 }
 
 /// Generic passive system type.
-pub trait Passive
+pub trait Passive: 'static
 {
     /// Process the world.
     fn process(&mut self, &World);
@@ -65,13 +65,13 @@ pub struct IntervalSystem
 {
     interval: u8,
     ticker: u8,
-    inner: Box<System+'static>,
+    inner: Box<System>,
 }
 
 impl IntervalSystem
 {
     /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: Box<System+'static>, interval: u8) -> IntervalSystem
+    pub fn new(system: Box<System>, interval: u8) -> IntervalSystem
     {
         IntervalSystem
         {

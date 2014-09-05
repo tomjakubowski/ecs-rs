@@ -9,7 +9,7 @@ use Entity;
 use System;
 use World;
 
-pub trait EntityProcess
+pub trait EntityProcess: 'static
 {
     fn process(&self, &Entity, &World, &mut Components);
 
@@ -34,7 +34,7 @@ pub trait EntityProcess
     }
 }
 
-pub trait BulkEntityProcess
+pub trait BulkEntityProcess: 'static
 {
     fn process(&self, Vec<&Entity>, &World, &mut Components);
 
@@ -64,13 +64,13 @@ pub struct BulkEntitySystem
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<BulkEntityProcess+'static>,
+    inner: Box<BulkEntityProcess>,
 }
 
 impl BulkEntitySystem
 {
     /// Return a new entity system with the specified bulk process.
-    pub fn new(inner: Box<BulkEntityProcess+'static>, aspect: Aspect) -> BulkEntitySystem
+    pub fn new(inner: Box<BulkEntityProcess>, aspect: Aspect) -> BulkEntitySystem
     {
         BulkEntitySystem
         {
@@ -121,13 +121,13 @@ pub struct EntitySystem
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<EntityProcess+'static>,
+    inner: Box<EntityProcess>,
 }
 
 impl EntitySystem
 {
     /// Return a new entity system with the specified process.
-    pub fn new(inner: Box<EntityProcess+'static>, aspect: Aspect) -> EntitySystem
+    pub fn new(inner: Box<EntityProcess>, aspect: Aspect) -> EntitySystem
     {
         EntitySystem
         {

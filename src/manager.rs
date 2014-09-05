@@ -10,7 +10,7 @@ use Entity;
 use World;
 
 /// Mutable manager
-pub trait MutableManager
+pub trait MutableManager: 'static
 {
     /// Called when an entity is added to the world.
     fn added(&mut self, &Entity, &World);
@@ -23,7 +23,7 @@ pub trait MutableManager
 }
 
 /// Immutable manager
-pub trait Manager
+pub trait Manager: 'static
 {
     /// Called when an entity is added to the world.
     fn added(&self, &Entity, &World);
