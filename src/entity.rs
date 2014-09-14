@@ -4,6 +4,8 @@
 use std::collections::Bitv;
 use uuid::Uuid;
 
+use world::World;
+
 /// Dual identifier for an entity.
 ///
 /// The first element (uint) is the entity's index, used to locate components.
@@ -39,6 +41,19 @@ impl Deref<uint> for Entity
     {
         let &Entity(ref i, _) = self;
         i
+    }
+}
+
+pub trait EntityBuilder
+{
+    fn build(&self, &mut World, Entity);
+}
+
+impl<'a> EntityBuilder for |&mut World, Entity|: 'a
+{
+    fn build(&self, w: &mut World, e: Entity)
+    {
+        self.build(w, e);
     }
 }
 

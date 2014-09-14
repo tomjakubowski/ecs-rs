@@ -38,7 +38,7 @@ extern crate uuid;
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
-pub use entity::Entity;
+pub use entity::{Entity, EntityBuilder};
 pub use manager::{Manager, MutableManager};
 pub use system::{Passive, System};
 pub use world::{Components, World};

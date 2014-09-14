@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::intrinsics::TypeId;
 
 use {Component, ComponentId};
-use Entity;
+use {Entity, EntityBuilder};
 use {Manager, MutableManager};
 use {Passive, System};
 use component::ComponentList;
@@ -203,6 +203,15 @@ impl World
         {
             manager.added(&ret, self);
         }
+        ret
+    }
+
+    /// Builds an entity
+    pub fn build_entity<T: EntityBuilder>(&mut self, builder: T)
+    {
+        let entity = self.create_entity();
+        let ret = builder.build(self, entity);
+        self.activate_entity(&entity);
         ret
     }
 
