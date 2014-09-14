@@ -73,6 +73,13 @@ impl World
         self.entities.borrow().is_activated(entity)
     }
 
+    /// Returns if an entity is valid (registered with the entity manager).
+    #[inline]
+    pub fn is_valid(&self, entity: &Entity) -> bool
+    {
+        self.entities.borrow().is_valid(entity)
+    }
+
     /// Registers a mutable manager.
     ///
     /// # Failure
@@ -229,7 +236,7 @@ impl World
         {
             fail!("Entity is already activated")
         }
-        if !self.entities.borrow().is_valid(entity)
+        if !self.is_valid(entity)
         {
             fail!("Cannot activate invalid entity")
         }
@@ -278,7 +285,7 @@ impl World
     /// If an entity is invalid
     pub fn delete_entity(&mut self, entity: &Entity)
     {
-        if !self.entities.borrow().is_valid(entity)
+        if !self.is_valid(entity)
         {
             fail!("Cannot delete invalid entity")
         }
@@ -303,7 +310,7 @@ impl World
     /// Returns false if the component could not be added (entity invalid or activated).
     pub fn add_component<T: Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.entities.borrow().is_valid(entity)
+        self.is_valid(entity)
         && !self.is_active(entity)
         && self.components.borrow_mut().add::<T>(entity, component)
     }
@@ -313,7 +320,7 @@ impl World
     /// Returns false if the component could not be removed (entity invalid or activated).
     pub fn remove_component<T: Component>(&mut self, entity: &Entity) -> bool
     {
-        self.entities.borrow().is_valid(entity)
+        self.is_valid(entity)
         && !self.is_active(entity)
         && self.components.borrow_mut().remove::<T>(entity)
     }
@@ -323,14 +330,14 @@ impl World
     /// Returns false if the entity does not contain that component.
     pub fn set_component<T: Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.entities.borrow().is_valid(entity)
+        self.is_valid(entity)
         && self.components.borrow_mut().set::<T>(entity, component)
     }
 
     /// Returns the value of a component for an entity (or None)
     pub fn get_component<T: Component>(&self, entity: &Entity) -> Option<T>
     {
-        if self.entities.borrow().is_valid(entity)
+        if self.is_valid(entity)
         {
             self.components.borrow().get::<T>(entity)
         }
