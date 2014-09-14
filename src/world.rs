@@ -3,11 +3,11 @@
 
 use std::cell::{RefMut, RefCell};
 use std::collections::HashMap;
+use std::intrinsics::TypeId;
 
 use {Component, ComponentId};
 use Entity;
 use {Manager, MutableManager};
-use Phantom;
 use {Passive, System};
 use component::ComponentList;
 use entity::EntityManager;
@@ -114,7 +114,7 @@ impl World
         {
             fail!("World is locked. Components may not be registered")
         }
-        self.components.borrow_mut().register(ComponentList::new(Phantom::<T>));
+        self.components.borrow_mut().register(ComponentList::new::<T>());
     }
 
     /// Registers a system.
@@ -156,7 +156,9 @@ impl World
         {
             fail!("World must be locked before updating")
         }
-        self.systems.borrow_mut().update(self, self.components());
+        self.systems.borrow_mut().preprocess(self);
+        self.systems.borrow().process(self.components());
+        self.systems.borrow_mut().postprocess(self);
     }
 
     /// Updates the passive system corresponding to `key`
@@ -357,16 +359,24 @@ impl SystemManager
         self.passive.insert(key, sys);
     }
 
-    pub fn update(&mut self, world: &World, mut components: Components)
+    pub fn preprocess(&mut self, world: &World)
     {
         for sys in self.systems.mut_iter()
         {
             sys.preprocess(world);
         }
+    }
+
+    pub fn process(&self, mut components: Components)
+    {
         for sys in self.systems.iter()
         {
-            sys.process(world, &mut components);
+            sys.process(&mut components);
         }
+    }
+
+    pub fn postprocess(&mut self, world: &World)
+    {
         for sys in self.systems.mut_iter()
         {
             sys.postprocess(world);
@@ -410,15 +420,15 @@ impl MutableManager for SystemManager
         }
     }
 
-    fn deactivated(&mut self, e: &Entity, _: &World)
+    fn deactivated(&mut self, e: &Entity, w: &World)
     {
         for sys in self.systems.mut_iter()
         {
-            sys.deactivated(e);
+            sys.deactivated(e, w);
         }
         for (_, sys) in self.passive.mut_iter()
         {
-            sys.deactivated(e);
+            sys.deactivated(e, w);
         }
     }
 }
@@ -448,17 +458,17 @@ impl ComponentManager
 
     fn add<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components.get_mut(&Component::cid(Phantom::<T>)).add::<T>(entity, &component)
+        self.components.get_mut(&TypeId::of::<T>().hash()).add::<T>(entity, &component)
     }
 
     fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components.get_mut(&Component::cid(Phantom::<T>)).set::<T>(entity, &component)
+        self.components.get_mut(&TypeId::of::<T>().hash()).set::<T>(entity, &component)
     }
 
     fn get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
-        self.components[Component::cid(Phantom::<T>)].get::<T>(entity)
+        self.components[TypeId::of::<T>().hash()].get::<T>(entity)
     }
 
     pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
@@ -468,12 +478,12 @@ impl ComponentManager
 
     fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
-        self.components.get_mut(&Component::cid(Phantom::<T>)).borrow_mut::<T>(entity)
+        self.components.get_mut(&TypeId::of::<T>().hash()).borrow_mut::<T>(entity)
     }
 
     fn remove<T:Component>(&mut self, entity: &Entity) -> bool
     {
-        self.components.get_mut(&Component::cid(Phantom::<T>)).rm(entity)
+        self.components.get_mut(&TypeId::of::<T>().hash()).rm(entity)
     }
 }
 
@@ -482,5 +492,20 @@ impl<'a> Components<'a>
     pub fn borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
         self.inner.borrow_mut::<T>(entity)
+    }
+
+    pub fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    {
+        self.inner.set::<T>(entity, component)
+    }
+
+    pub fn get<T:Component>(&mut self, entity: &Entity) -> Option<T>
+    {
+        self.inner.get::<T>(entity)
+    }
+
+    pub fn has(&mut self, entity: &Entity, id: ComponentId) -> bool
+    {
+        self.inner.has(entity, id)
     }
 }

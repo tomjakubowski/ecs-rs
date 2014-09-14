@@ -3,26 +3,18 @@
 
 use std::collections::Bitv;
 use std::default::Default;
+use std::intrinsics::TypeId;
+use std::mem;
 
-use buffer::{Buffer, Buffered};
+use buffer::Buffer;
 use Entity;
-use Phantom;
 
-pub trait Component: Copy+Clone+Default
+pub trait Component: Copy+Clone+Default+'static
 {
-    /// Return the Component ID of a component type.
-    fn cid(Phantom<Self>) -> ComponentId;
 
-    // The user doesn't need to know about the Buffered trait.
-    #[inline]
-    #[doc(hidden)]
-    fn stride(a: Phantom<Self>) -> uint
-    {
-        Buffered::stride(a)
-    }
 }
 
-impl<T:Component> Buffered for T {}
+impl<T:Copy+Clone+Default+'static> Component for T {}
 
 pub type ComponentId = u64;
 
@@ -35,23 +27,13 @@ pub struct ComponentList
 
 impl ComponentList
 {
-    pub fn new<T:Component>(a: Phantom<T>) -> ComponentList
+    pub fn new<T:Component>() -> ComponentList
     {
         ComponentList
         {
-            buffer: Buffer::new(Component::stride(a)),
+            buffer: Buffer::new(mem::size_of::<T>()),
             enabled: Bitv::new(),
-            id: Component::cid(a),
-        }
-    }
-
-    pub fn new_stride(stride: uint, id: ComponentId) -> ComponentList
-    {
-        ComponentList
-        {
-            buffer: Buffer::new(stride),
-            enabled: Bitv::new(),
-            id: id,
+            id: TypeId::of::<T>().hash(),
         }
     }
 
@@ -61,7 +43,7 @@ impl ComponentList
         {
             false
         }
-        else if Component::cid(Phantom::<T>) != self.id
+        else if TypeId::of::<T>().hash() != self.id
         {
             false
         }
@@ -84,7 +66,7 @@ impl ComponentList
         {
             false
         }
-        else if Component::cid(Phantom::<T>) != self.id
+        else if TypeId::of::<T>().hash() != self.id
         {
             false
         }
@@ -97,7 +79,7 @@ impl ComponentList
 
     pub fn add_or_set<T:Component>(&mut self, entity: &Entity, component: &T) -> bool
     {
-        if Component::cid(Phantom::<T>) != self.id
+        if TypeId::of::<T>().hash() != self.id
         {
             false
         }

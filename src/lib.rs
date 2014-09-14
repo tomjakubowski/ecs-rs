@@ -52,231 +52,67 @@ pub mod manager;
 pub mod system;
 pub mod world;
 
-/// A silly type needed to call static trait functions.
-#[experimental="This should not be needed when static methods and generics work properly"]
-pub struct Phantom<T>;
-
 #[macro_escape]
 mod macros
 {
-    /// Macro used to create a component.
-    ///
-    /// Manually created components will probably not work.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// component!(
-    ///     ID_Pos: Position {
-    ///         x: uint,
-    ///         y: uint
-    ///     }
-    /// )
-    /// ```
-    /// Expands to a component struct:
-    ///
-    /// ```ignore
-    /// pub struct Position {
-    ///     x: uint,
-    ///     y: uint
-    /// }
-    /// ```
-    /// And an identifier (lazy-evaluated static):
-    ///
-    /// ```ignore
-    /// static ref ID_Pos: ComponentId = ...;
-    /// ```
-    ///
-    /// `Component` is automatically implemented for the struct.
     #[macro_export]
     macro_rules! component {
-        ($ID:ident : $Name:ident { $($field:ident : $ty:ty),+ }) =>
-        (
-            // This little bit here was extracted and modified from lazy-static.rs
-            // https://github.com/Kimundi/lazy-static.rs
-            // Used for computing the hash of the type name just once.
-            #[allow(dead_code)]
-            #[allow(non_camel_case_types)]
-            struct $ID {__private_field: ()}
-            #[allow(visible_private_types)]
-            pub static $ID: $ID = $ID {__private_field: ()};
-            impl Deref<::ecs::ComponentId> for $ID {
-                fn deref(&self) -> &::ecs::ComponentId {
-                    use std::sync::{Once, ONCE_INIT};
-                    use std::mem::transmute;
+        ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
+        {
+            $(
+                #[deriving(Clone, Default, PartialEq, Show)]
+                pub struct $Name
+                {
+                    $(pub $field : $ty),+
+                }
+            )+
+        };
+    }
 
-                    type CID = ::ecs::ComponentId;
+    #[macro_export]
+    macro_rules! feature {
+        ($($Name:ident;)+) =>
+        {
+            $(
+                #[deriving(Clone, Default, PartialEq, Show)]
+                pub struct $Name;
+            )+
+        };
+    }
 
-                    #[inline(always)]
-                    fn require_sync(_: &CID) { }
+    #[macro_export]
+    macro_rules! new_type {
+        ($($Name:ident($Type:ty);)+) =>
+        {
+            $(
+                #[deriving(Clone, Default, PartialEq, Show)]
+                pub struct $Name(pub $Type);
 
-                    unsafe {
-                        static mut s: *const CID = 0 as *const CID;
-                        static mut ONCE: Once = ONCE_INIT;
-                        ONCE.doit(|| {
-                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
-                        });
-                        let static_ref = &*s;
-                        require_sync(static_ref);
-                        static_ref
+                impl Deref<$Type> for $Name
+                {
+                    fn deref(&self) -> &$Type
+                    {
+                        let $Name(ref ret) = *self;
+                        ret
                     }
                 }
-            }
+            )+
+        };
+    }
 
-            #[deriving(Clone, Default, PartialEq, Show)]
-            pub struct $Name
-            {
-                $(pub $field : $ty),+
-            }
+    #[macro_export]
+    macro_rules! component_id {
+        ($ty:ty) =>
+        {
+            ::std::intrinsics::TypeId::of::<$ty>().hash()
+        };
+    }
 
-            impl Component for $Name
-            {
-                fn cid(_: ::ecs::Phantom<$Name>) -> ::ecs::ComponentId
-                {
-                    *$ID
-                }
-            }
-        );
-        ($ID:ident : $Name:ident ($ty:ty);) =>
-        (
-            // This little bit here was extracted and modified from lazy-static.rs
-            // https://github.com/Kimundi/lazy-static.rs
-            // Used for computing the hash of the type name just once.
-            #[allow(dead_code)]
-            #[allow(non_camel_case_types)]
-            struct $ID {__private_field: ()}
-            #[allow(visible_private_types)]
-            pub static $ID: $ID = $ID {__private_field: ()};
-            impl Deref<::ecs::ComponentId> for $ID {
-                fn deref(&self) -> &::ecs::ComponentId {
-                    use std::sync::{Once, ONCE_INIT};
-                    use std::mem::transmute;
-
-                    type CID = ::ecs::ComponentId;
-
-                    #[inline(always)]
-                    fn require_sync(_: &CID) { }
-
-                    unsafe {
-                        static mut s: *const CID = 0 as *const CID;
-                        static mut ONCE: Once = ONCE_INIT;
-                        ONCE.doit(|| {
-                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
-                        });
-                        let static_ref = &*s;
-                        require_sync(static_ref);
-                        static_ref
-                    }
-                }
-            }
-
-            #[deriving(Clone, Default, PartialEq, Show)]
-            pub struct $Name(pub $ty);
-
-            impl Component for $Name
-            {
-                fn cid(_: ::ecs::Phantom<$Name>) -> ::ecs::ComponentId
-                {
-                    *$ID
-                }
-            }
-
-            impl Deref<$ty> for $Name
-            {
-                fn deref(&self) -> &$ty
-                {
-                    let $Name(ref ret) = *self;
-                    ret
-                }
-            }
-        );
-        ($ID:ident : $Name:ident ( $($ty:ty),+ );) =>
-        (
-            // This little bit here was extracted and modified from lazy-static.rs
-            // https://github.com/Kimundi/lazy-static.rs
-            // Used for computing the hash of the type name just once.
-            #[allow(dead_code)]
-            #[allow(non_camel_case_types)]
-            struct $ID {__private_field: ()}
-            #[allow(visible_private_types)]
-            pub static $ID: $ID = $ID {__private_field: ()};
-            impl Deref<::ecs::ComponentId> for $ID {
-                fn deref(&self) -> &::ecs::ComponentId {
-                    use std::sync::{Once, ONCE_INIT};
-                    use std::mem::transmute;
-
-                    type CID = ::ecs::ComponentId;
-
-                    #[inline(always)]
-                    fn require_sync(_: &CID) { }
-
-                    unsafe {
-                        static mut s: *const CID = 0 as *const CID;
-                        static mut ONCE: Once = ONCE_INIT;
-                        ONCE.doit(|| {
-                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
-                        });
-                        let static_ref = &*s;
-                        require_sync(static_ref);
-                        static_ref
-                    }
-                }
-            }
-
-            #[deriving(Clone, Default, PartialEq, Show)]
-            pub struct $Name($(pub $ty),+);
-
-            impl Component for $Name
-            {
-                fn cid(_: ::ecs::Phantom<$Name>) -> ::ecs::ComponentId
-                {
-                    *$ID
-                }
-            }
-        );
-        ($ID: ident : $Name: ident) =>
-        (
-            // This little bit here was extracted and modified from lazy-static.rs
-            // https://github.com/Kimundi/lazy-static.rs
-            // Used for computing the hash of the type name just once.
-            #[allow(dead_code)]
-            #[allow(non_camel_case_types)]
-            struct $ID {__private_field: ()}
-            #[allow(visible_private_types)]
-            pub static $ID: $ID = $ID {__private_field: ()};
-            impl Deref<::ecs::ComponentId> for $ID {
-                fn deref(&self) -> &::ecs::ComponentId {
-                    use std::sync::{Once, ONCE_INIT};
-                    use std::mem::transmute;
-
-                    type CID = ::ecs::ComponentId;
-
-                    #[inline(always)]
-                    fn require_sync(_: &CID) { }
-
-                    unsafe {
-                        static mut s: *const CID = 0 as *const CID;
-                        static mut ONCE: Once = ONCE_INIT;
-                        ONCE.doit(|| {
-                            s = transmute::<Box<CID>, *const CID>(box ::std::hash::hash(&stringify!($ID $Name)));
-                        });
-                        let static_ref = &*s;
-                        require_sync(static_ref);
-                        static_ref
-                    }
-                }
-            }
-
-            #[deriving(Clone, Default, PartialEq, Show)]
-            pub struct $Name;
-
-            impl Component for $Name
-            {
-                fn cid(_: ::ecs::Phantom<$Name>) -> ::ecs::ComponentId
-                {
-                    *$ID
-                }
-            }
-        )
+    #[macro_export]
+    macro_rules! component_ids {
+        ($($ty:ty),+) =>
+        {
+            vec![$(::std::intrinsics::TypeId::of::<$ty>().hash(),)+]
+        };
     }
 }

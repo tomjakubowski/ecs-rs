@@ -11,7 +11,7 @@ use World;
 
 pub trait EntityProcess: 'static
 {
-    fn process(&self, &Entity, &World, &mut Components);
+    fn process(&self, &Entity, &mut Components);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -28,7 +28,7 @@ pub trait EntityProcess: 'static
 
     }
 
-    fn deactivated(&mut self, _: &Entity)
+    fn deactivated(&mut self, _: &Entity, _: &World)
     {
 
     }
@@ -36,7 +36,7 @@ pub trait EntityProcess: 'static
 
 pub trait BulkEntityProcess: 'static
 {
-    fn process(&self, Vec<&Entity>, &World, &mut Components);
+    fn process(&self, Vec<&Entity>, &mut Components);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -53,7 +53,7 @@ pub trait BulkEntityProcess: 'static
 
     }
 
-    fn deactivated(&mut self, _: &Entity)
+    fn deactivated(&mut self, _: &Entity, _: &World)
     {
 
     }
@@ -83,9 +83,9 @@ impl BulkEntitySystem
 
 impl System for BulkEntitySystem
 {
-    fn process(&self, world: &World, c: &mut Components)
+    fn process(&self, c: &mut Components)
     {
-        self.inner.process(FromIterator::from_iter(self.interested.values()), world, c);
+        self.inner.process(FromIterator::from_iter(self.interested.values()), c);
     }
 
     fn preprocess(&mut self, w: &World)
@@ -107,11 +107,11 @@ impl System for BulkEntitySystem
         }
     }
 
-    fn deactivated(&mut self, entity: &Entity)
+    fn deactivated(&mut self, entity: &Entity, world: &World)
     {
         if self.interested.remove(&**entity)
         {
-            self.inner.deactivated(entity);
+            self.inner.deactivated(entity, world);
         }
     }
 }
@@ -140,11 +140,11 @@ impl EntitySystem
 
 impl System for EntitySystem
 {
-    fn process(&self, world: &World, c: &mut Components)
+    fn process(&self, c: &mut Components)
     {
         for e in self.interested.values()
         {
-            self.inner.process(e, world, c);
+            self.inner.process(e, c);
         }
     }
 
@@ -167,11 +167,11 @@ impl System for EntitySystem
         }
     }
 
-    fn deactivated(&mut self, entity: &Entity)
+    fn deactivated(&mut self, entity: &Entity, world: &World)
     {
         if self.interested.remove(&**entity)
         {
-            self.inner.deactivated(entity);
+            self.inner.deactivated(entity, world);
         }
     }
 }

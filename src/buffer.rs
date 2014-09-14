@@ -10,16 +10,6 @@ use std::mem;
 use std::slice;
 use std::raw::Slice;
 
-use Phantom;
-
-pub trait Buffered: Copy
-{
-    fn stride(_: Phantom<Self>) -> uint
-    {
-        mem::size_of::<Self>()
-    }
-}
-
 pub struct Buffer
 {
     bytes: Vec<u8>,
@@ -37,7 +27,7 @@ impl Buffer
         }
     }
 
-    pub unsafe fn set<T: Buffered>(&mut self, index: uint, val: &T)
+    pub unsafe fn set<T: Copy+'static>(&mut self, index: uint, val: &T)
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -58,7 +48,7 @@ impl Buffer
         _slice.copy_memory(vslice);
     }
 
-    pub unsafe fn get<T: Buffered>(&self, index: uint) -> Option<T>
+    pub unsafe fn get<T: Copy+'static>(&self, index: uint) -> Option<T>
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -81,7 +71,7 @@ impl Buffer
         }
     }
 
-    pub unsafe fn borrow<T: Buffered>(&self, index: uint) -> Option<&T>
+    pub unsafe fn borrow<T: Copy+'static>(&self, index: uint) -> Option<&T>
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -104,7 +94,7 @@ impl Buffer
         }
     }
 
-    pub unsafe fn borrow_mut<T: Buffered>(&mut self, index: uint) -> Option<&mut T>
+    pub unsafe fn borrow_mut<T: Copy+'static>(&mut self, index: uint) -> Option<&mut T>
     {
         if mem::size_of::<T>() != self.stride
         {
