@@ -63,21 +63,21 @@ impl Aspect
     /// Add a requirement for all the specified `Component`s to be found.
     pub fn with_all(mut self, vec: Vec<ComponentId>) -> Aspect
     {
-        self.all.push_all_move(vec);
+        self.all.extend(vec.into_iter());
         self
     }
 
     /// Add a requirement for at least one of the specified `Component`s to be found.
     pub fn with_any(mut self, vec: Vec<ComponentId>) -> Aspect
     {
-        self.any.push_all_move(vec);
+        self.any.extend(vec.into_iter());
         self
     }
 
     /// Add a requirement for none of the specified `Component`s to be found.
     pub fn with_none(mut self, vec: Vec<ComponentId>) -> Aspect
     {
-        self.none.push_all_move(vec);
+        self.none.extend(vec.into_iter());
         self
     }
 

@@ -36,9 +36,9 @@ impl Buffer
         let offset = self.stride * index;
         while offset + self.stride > self.bytes.len()
         {
-            self.bytes.grow(self.stride, &0u8);
+            self.bytes.grow(self.stride, 0u8);
         }
-        let _slice = self.bytes.mut_slice(offset, offset + self.stride);
+        let _slice = self.bytes.slice_mut(offset, offset + self.stride);
 
         let vslice: &[u8] = mem::transmute(Slice
         {
