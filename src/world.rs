@@ -377,7 +377,7 @@ impl SystemManager
 
     pub fn preprocess(&mut self, world: &World)
     {
-        for sys in self.systems.mut_iter()
+        for sys in self.systems.iter_mut()
         {
             sys.preprocess(world);
         }
@@ -393,7 +393,7 @@ impl SystemManager
 
     pub fn postprocess(&mut self, world: &World)
     {
-        for sys in self.systems.mut_iter()
+        for sys in self.systems.iter_mut()
         {
             sys.postprocess(world);
         }
@@ -426,11 +426,11 @@ impl MutableManager for SystemManager
 
     fn activated(&mut self, e: &Entity, w: &World)
     {
-        for sys in self.systems.mut_iter()
+        for sys in self.systems.iter_mut()
         {
             sys.activated(e, w);
         }
-        for (_, sys) in self.passive.mut_iter()
+        for (_, sys) in self.passive.iter_mut()
         {
             sys.activated(e, w);
         }
@@ -438,11 +438,11 @@ impl MutableManager for SystemManager
 
     fn deactivated(&mut self, e: &Entity, w: &World)
     {
-        for sys in self.systems.mut_iter()
+        for sys in self.systems.iter_mut()
         {
             sys.deactivated(e, w);
         }
-        for (_, sys) in self.passive.mut_iter()
+        for (_, sys) in self.passive.iter_mut()
         {
             sys.deactivated(e, w);
         }
@@ -466,7 +466,7 @@ impl ComponentManager
 
     fn delete_entity(&mut self, entity: &Entity)
     {
-        for (_, list) in self.components.mut_iter()
+        for (_, list) in self.components.iter_mut()
         {
             list.rm(entity);
         }
