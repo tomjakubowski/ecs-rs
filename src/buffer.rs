@@ -7,6 +7,7 @@
 // Apart from `Phantom`, this is a freestanding backend for the component lists.
 
 use std::mem;
+use std::ptr;
 use std::slice;
 use std::raw::Slice;
 
@@ -38,14 +39,10 @@ impl Buffer
         {
             self.bytes.grow(self.stride, 0u8);
         }
-        let _slice = self.bytes.slice_mut(offset, offset + self.stride);
-
-        let vslice: &[u8] = mem::transmute(Slice
-        {
-            data: slice::ref_slice(val).as_ptr() as *const u8,
-            len: self.stride,
-        });
-        _slice.copy_memory(vslice);
+        
+        let src = slice::ref_slice(val).as_ptr() as *const u8;
+        let dst = self.bytes.slice_mut(offset, offset + self.stride).as_mut_ptr();
+        ptr::copy_memory(dst, src, self.stride);
     }
 
     pub unsafe fn get<T: Copy+'static>(&self, index: uint) -> Option<T>
