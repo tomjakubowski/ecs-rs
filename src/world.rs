@@ -214,7 +214,7 @@ impl World
     }
 
     /// Builds an entity
-    pub fn build_entity<T: EntityBuilder>(&mut self, builder: T)
+    pub fn build_entity<T: EntityBuilder>(&mut self, mut builder: T)
     {
         let entity = self.create_entity();
         let ret = builder.build(self, entity);

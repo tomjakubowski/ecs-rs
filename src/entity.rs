@@ -46,14 +46,14 @@ impl Deref<uint> for Entity
 
 pub trait EntityBuilder
 {
-    fn build(&self, &mut World, Entity);
+    fn build(&mut self, &mut World, Entity);
 }
 
 impl<'a> EntityBuilder for |&mut World, Entity|: 'a
 {
-    fn build(&self, w: &mut World, e: Entity)
+    fn build(&mut self, w: &mut World, e: Entity)
     {
-        self.build(w, e);
+        (*self)(w, e);
     }
 }
 
