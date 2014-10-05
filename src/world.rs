@@ -19,7 +19,59 @@ pub struct World
     systems: RefCell<SystemManager>,
     mut_managers: Vec<RefCell<Box<MutableManager>>>,
     managers: Vec<Box<Manager>>,
-    locked: bool,
+}
+
+pub struct WorldBuilder
+{
+    world: World
+}
+
+impl WorldBuilder
+{
+    pub fn new() -> WorldBuilder
+    {
+        WorldBuilder
+        {
+            world: World::new()
+        }
+    }
+
+    pub fn build(self) -> World
+    {
+        self.world
+    }
+
+    /// Registers a mutable manager.
+    #[experimental]
+    pub fn register_manager_mut(&mut self, manager: Box<MutableManager>)
+    {
+        self.world.mut_managers.push(RefCell::new(manager));
+    }
+
+    /// Registers an immutable manager.
+    #[experimental]
+    pub fn register_manager(&mut self, manager: Box<Manager>)
+    {
+        self.world.managers.push(manager);
+    }
+
+    /// Registers a component.
+    pub fn register_component<T: Component>(&mut self)
+    {
+        self.world.components.borrow_mut().register(ComponentList::new::<T>());
+    }
+
+    /// Registers a system.
+    pub fn register_system(&mut self, sys: Box<System>)
+    {
+        self.world.systems.borrow_mut().register(sys);
+    }
+
+    /// Registers a passive system.
+    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    {
+        self.world.systems.borrow_mut().register_passive(key, sys);
+    }
 }
 
 pub struct Components<'a>
@@ -40,7 +92,7 @@ struct SystemManager
 
 impl World
 {
-    pub fn new() -> World
+    fn new() -> World
     {
         World
         {
@@ -49,21 +101,7 @@ impl World
             systems: RefCell::new(SystemManager::new()),
             mut_managers: Vec::new(),
             managers: Vec::new(),
-            locked: false,
         }
-    }
-
-    /// Lock down the managers and systems, and components of a world.
-    ///
-    /// This must be called before entities can be created and modified.
-    /// After it is called, no systems/managers/components may be registered.
-    pub fn finalise(&mut self)
-    {
-        if self.locked
-        {
-            fail!("World is already finalised")
-        }
-        self.locked = true;
     }
 
     /// Returns if an entity has been activated.
@@ -80,105 +118,17 @@ impl World
         self.entities.borrow().is_valid(entity)
     }
 
-    /// Registers a mutable manager.
-    ///
-    /// # Failure
-    ///
-    /// If the world has been finalised
-    #[experimental]
-    pub fn register_manager_mut(&mut self, manager: Box<MutableManager>)
-    {
-        if self.locked
-        {
-            fail!("World is locked. Managers may not be registered")
-        }
-        self.mut_managers.push(RefCell::new(manager));
-    }
-
-    /// Registers an immutable manager.
-    ///
-    /// # Failure
-    ///
-    /// If the world has been finalised
-    #[experimental]
-    pub fn register_manager(&mut self, manager: Box<Manager>)
-    {
-        if self.locked
-        {
-            fail!("World is locked. Managers may not be registered")
-        }
-        self.managers.push(manager);
-    }
-
-    /// Registers a component.
-    ///
-    /// # Failure
-    ///
-    /// If the world has been finalised
-    pub fn register_component<T: Component>(&mut self)
-    {
-        if self.locked
-        {
-            fail!("World is locked. Components may not be registered")
-        }
-        self.components.borrow_mut().register(ComponentList::new::<T>());
-    }
-
-    /// Registers a system.
-    ///
-    /// # Failure
-    ///
-    /// If the world has been finalised
-    pub fn register_system(&mut self, sys: Box<System>)
-    {
-        if self.locked
-        {
-            fail!("World is locked. Systems may not be registered")
-        }
-        self.systems.borrow_mut().register(sys);
-    }
-
-    /// Registers a passive system.
-    ///
-    /// # Failure
-    ///
-    /// If the world has been finalised
-    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
-    {
-        if self.locked
-        {
-            fail!("World is locked. Systems may not be registered")
-        }
-        self.systems.borrow_mut().register_passive(key, sys);
-    }
-
     /// Updates the world by processing all systems.
-    ///
-    /// # Failure
-    ///
-    /// If the world has not been finalised
     pub fn update(&mut self)
     {
-        if !self.locked
-        {
-            fail!("World must be locked before updating")
-        }
         self.systems.borrow_mut().preprocess(self);
         self.systems.borrow().process(self.components());
         self.systems.borrow_mut().postprocess(self);
     }
 
     /// Updates the passive system corresponding to `key`
-    ///
-    /// # Failure
-    ///
-    /// If the world has not been finalised
     pub fn update_passive(&mut self, key: &'static str)
     {
-        if !self.locked
-        {
-            fail!("World must be locked before updating")
-        }
         self.systems.borrow_mut().update_passive(key, self);
     }
 
@@ -191,16 +141,8 @@ impl World
     }
 
     /// Creates an entity
-    ///
-    /// # Failure
-    ///
-    /// If the world has not been finalised
     pub fn create_entity(&mut self) -> Entity
     {
-        if !self.locked
-        {
-            fail!("World must be locked before creating entities")
-        }
         let ret = self.entities.borrow_mut().create_entity();
         for ref manager in self.mut_managers.iter()
         {
