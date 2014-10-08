@@ -9,15 +9,13 @@ use std::mem;
 use buffer::Buffer;
 use Entity;
 
-pub trait Component: Copy+Clone+Default+'static
-{
-
-}
+pub trait Component: Copy+Clone+Default+'static {}
 
 impl<T:Copy+Clone+Default+'static> Component for T {}
 
 pub type ComponentId = u64;
 
+#[doc(hidden)]
 pub struct ComponentList
 {
     buffer: Buffer,

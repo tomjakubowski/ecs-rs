@@ -13,12 +13,10 @@ use World;
 pub trait MutableManager: 'static
 {
     /// Called when an entity is added to the world.
-    fn added(&mut self, &Entity, &World);
-    /// Called when an entity is removed from the world.
-    fn removed(&mut self, &Entity, &World);
-    /// Called when an entity is activated in the world.
     fn activated(&mut self, &Entity, &World);
-    /// Called when an entity is deactivated in the world.
+    /// Called when an entity is modified in the world.
+    fn reactivated(&mut self, &Entity, &World);
+    /// Called when an entity is removed from the world.
     fn deactivated(&mut self, &Entity, &World);
 }
 
@@ -26,30 +24,23 @@ pub trait MutableManager: 'static
 pub trait Manager: 'static
 {
     /// Called when an entity is added to the world.
-    fn added(&self, &Entity, &World);
-    /// Called when an entity is removed from the world.
-    fn removed(&self, &Entity, &World);
-    /// Called when an entity is activated in the world.
     fn activated(&self, &Entity, &World);
-    /// Called when an entity is deactivated in the world.
+    /// Called when an entity is modified in the world.
+    fn reactivated(&self, &Entity, &World);
+    /// Called when an entity is removed from the world.
     fn deactivated(&self, &Entity, &World);
 }
 
 impl<T: MutableManager> MutableManager for Rc<RefCell<T>>
 {
-    fn added(&mut self, e: &Entity, w: &World)
-    {
-        self.borrow_mut().added(e, w)
-    }
-
-    fn removed(&mut self, e: &Entity, w: &World)
-    {
-        self.borrow_mut().removed(e, w)
-    }
-
     fn activated(&mut self, e: &Entity, w: &World)
     {
         self.borrow_mut().activated(e, w)
+    }
+
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.borrow_mut().reactivated(e, w)
     }
 
     fn deactivated(&mut self, e: &Entity, w: &World)

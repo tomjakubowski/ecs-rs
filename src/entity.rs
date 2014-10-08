@@ -4,7 +4,7 @@
 use std::collections::Bitv;
 use uuid::Uuid;
 
-use world::World;
+use Components;
 
 /// Dual identifier for an entity.
 ///
@@ -17,6 +17,11 @@ pub struct Entity(uint, Uuid);
 #[stable]
 impl Entity
 {
+    pub fn nil() -> Entity
+    {
+        Entity(0, Uuid::nil())
+    }
+
     /// Returns the entity's index.
     #[inline]
     pub fn get_index(&self) -> uint
@@ -46,16 +51,33 @@ impl Deref<uint> for Entity
 
 pub trait EntityBuilder
 {
-    fn build(&mut self, &mut World, Entity);
+    fn build(&mut self, &mut Components, Entity);
 }
 
-impl<'a> EntityBuilder for |&mut World, Entity|: 'a
+impl<'a> EntityBuilder for |&mut Components, Entity|: 'a
 {
-    fn build(&mut self, w: &mut World, e: Entity)
+    fn build(&mut self, c: &mut Components, e: Entity)
     {
-        (*self)(w, e);
+        (*self)(c, e);
     }
 }
+
+impl EntityBuilder for () { fn build(&mut self, _: &mut Components, _: Entity) {} }
+
+pub trait EntityModifier
+{
+    fn modify(&mut self, &mut Components, Entity);
+}
+
+impl<'a> EntityModifier for |&mut Components, Entity|: 'a
+{
+    fn modify(&mut self, c: &mut Components, e: Entity)
+    {
+        (*self)(c, e);
+    }
+}
+
+impl EntityModifier for () { fn modify(&mut self, _: &mut Components, _: Entity) {} }
 
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
@@ -64,7 +86,6 @@ pub struct EntityManager
     ids: IdPool,
     entities: Vec<Entity>,
     enabled: Bitv,
-    activated: Bitv,
 }
 
 impl EntityManager
@@ -77,7 +98,6 @@ impl EntityManager
             ids: IdPool::new(),
             entities: Vec::new(),
             enabled: Bitv::new(),
-            activated: Bitv::new(),
         }
     }
 
@@ -96,44 +116,9 @@ impl EntityManager
         {
             let diff = *ret - self.enabled.len();
             self.enabled.grow(diff+1, false);
-            self.activated.grow(diff+1, false);
         }
         self.enabled.set(*ret, true);
         ret
-    }
-
-    /// Marks an entity as activated, locking its components and allowing it to be used by systems.
-    pub fn activate_entity(&mut self, entity: &Entity)
-    {
-        if self.is_valid(entity)
-        {
-            if self.activated[**entity]
-            {
-                fail!("Entity already activated")
-            }
-            self.activated.set(**entity, true);
-        }
-        else
-        {
-            fail!("Tried to activate invalid entity")
-        }
-    }
-
-    /// Marks an entity as deactivated, unlocking its components and disabling it from any systems.
-    pub fn deactivate_entity(&mut self, entity: &Entity)
-    {
-        if self.is_valid(entity)
-        {
-            if !self.activated[**entity]
-            {
-                fail!("Entity already deactivated")
-            }
-            self.activated.set(**entity, false);
-        }
-        else
-        {
-            fail!("Tried to deactivate invalid entity")
-        }
     }
 
     /// Returns true if an entity is valid (not removed from the manager).
@@ -143,19 +128,11 @@ impl EntityManager
         &self.entities[**entity] == entity && self.enabled[**entity]
     }
 
-    /// Returns true if an entity is activated.
-    #[inline]
-    pub fn is_activated(&self, entity: &Entity) -> bool
-    {
-        self.is_valid(entity) && self.activated[**entity]
-    }
-
     /// Deletes an entity from the manager.
     pub fn delete_entity(&mut self, entity: &Entity)
     {
         self.entities[mut][**entity] = Entity(0, Uuid::nil());
         self.enabled.set(**entity, false);
-        self.activated.set(**entity, false);
         self.ids.return_id(**entity);
     }
 }

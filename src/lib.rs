@@ -38,10 +38,10 @@ extern crate uuid;
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
-pub use entity::{Entity, EntityBuilder};
+pub use entity::{Entity, EntityBuilder, EntityModifier};
 pub use manager::{Manager, MutableManager};
 pub use system::{Passive, System};
-pub use world::{Components, World, WorldBuilder};
+pub use world::{Components, EntityData, World, WorldBuilder};
 
 pub mod buffer;
 

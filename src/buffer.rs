@@ -1,10 +1,8 @@
 
 #![experimental]
-
-//! Store objects as bytes for types that need to avoid generics, with partial safety.
+#![doc(hidden)]
 
 // This is a strange, wonderful, disgusting, and useful object.
-// Apart from `Phantom`, this is a freestanding backend for the component lists.
 
 use std::mem;
 use std::ptr;
@@ -39,7 +37,7 @@ impl Buffer
         {
             self.bytes.grow(self.stride, 0u8);
         }
-        
+
         let src = slice::ref_slice(val).as_ptr() as *const u8;
         let dst = self.bytes.slice_mut(offset, offset + self.stride).as_mut_ptr();
         ptr::copy_memory(dst, src, self.stride);

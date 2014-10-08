@@ -4,7 +4,7 @@
 pub use self::entitysystem::{BulkEntitySystem, BulkEntityProcess};
 pub use self::entitysystem::{EntitySystem, EntityProcess};
 
-use Components;
+use EntityData;
 use Entity;
 use World;
 
@@ -14,7 +14,7 @@ pub mod entitysystem;
 pub trait System: 'static
 {
     /// Process the world.
-    fn process(&self, &mut Components);
+    fn process(&self, &mut EntityData);
 
     /// Optional method called before processing.
     fn preprocess(&mut self, _: &World)
@@ -34,6 +34,15 @@ pub trait System: 'static
 
     }
 
+    /// Optional method called when an entity is reactivated.
+    ///
+    /// By default it calls deactivated() followed by activated()
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.deactivated(e, w);
+        self.activated(e, w);
+    }
+
     /// Optional method called when an entity is deactivated.
     fn deactivated(&mut self, _: &Entity, _: &World)
     {
@@ -51,6 +60,15 @@ pub trait Passive: 'static
     fn activated(&mut self, _: &Entity, _: &World)
     {
 
+    }
+
+    /// Optional method called when an entity is reactivated.
+    ///
+    /// By default it calls deactivated() followed by activated()
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.deactivated(e, w);
+        self.activated(e, w);
     }
 
     /// Optional method called when an entity is deactivated.
@@ -84,7 +102,7 @@ impl IntervalSystem
 
 impl System for IntervalSystem
 {
-    fn process(&self, c: &mut Components)
+    fn process(&self, c: &mut EntityData)
     {
         if self.ticker == self.interval
         {
@@ -116,6 +134,11 @@ impl System for IntervalSystem
     fn activated(&mut self, e: &Entity, w: &World)
     {
         self.inner.activated(e, w);
+    }
+
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.inner.reactivated(e, w);
     }
 
     fn deactivated(&mut self, e: &Entity, w: &World)

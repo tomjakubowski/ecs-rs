@@ -4,14 +4,14 @@
 use std::collections::TrieMap;
 
 use Aspect;
-use Components;
+use EntityData;
 use Entity;
 use System;
 use World;
 
 pub trait EntityProcess: 'static
 {
-    fn process(&self, &Entity, &mut Components);
+    fn process(&self, &Entity, &mut EntityData);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -26,6 +26,12 @@ pub trait EntityProcess: 'static
     fn activated(&mut self, _: &Entity, _: &World)
     {
 
+    }
+
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.deactivated(e, w);
+        self.activated(e, w);
     }
 
     fn deactivated(&mut self, _: &Entity, _: &World)
@@ -36,7 +42,7 @@ pub trait EntityProcess: 'static
 
 pub trait BulkEntityProcess: 'static
 {
-    fn process(&self, Vec<&Entity>, &mut Components);
+    fn process(&self, Vec<&Entity>, &mut EntityData);
 
     fn preprocess(&mut self, _: &World)
     {
@@ -51,6 +57,12 @@ pub trait BulkEntityProcess: 'static
     fn activated(&mut self, _: &Entity, _: &World)
     {
 
+    }
+
+    fn reactivated(&mut self, e: &Entity, w: &World)
+    {
+        self.deactivated(e, w);
+        self.activated(e, w);
     }
 
     fn deactivated(&mut self, _: &Entity, _: &World)
@@ -83,7 +95,7 @@ impl BulkEntitySystem
 
 impl System for BulkEntitySystem
 {
-    fn process(&self, c: &mut Components)
+    fn process(&self, c: &mut EntityData)
     {
         self.inner.process(FromIterator::from_iter(self.interested.values()), c);
     }
@@ -101,6 +113,27 @@ impl System for BulkEntitySystem
     fn activated(&mut self, entity: &Entity, world: &World)
     {
         if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity, *entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn reactivated(&mut self, entity: &Entity, world: &World)
+    {
+        if self.interested.contains_key(&**entity)
+        {
+            if self.aspect.check(entity, world)
+            {
+                self.inner.reactivated(entity, world);
+            }
+            else
+            {
+                self.interested.remove(&**entity);
+                self.inner.deactivated(entity, world);
+            }
+        }
+        else if self.aspect.check(entity, world)
         {
             self.interested.insert(**entity, *entity);
             self.inner.activated(entity, world);
@@ -140,7 +173,7 @@ impl EntitySystem
 
 impl System for EntitySystem
 {
-    fn process(&self, c: &mut Components)
+    fn process(&self, c: &mut EntityData)
     {
         for e in self.interested.values()
         {
@@ -161,6 +194,27 @@ impl System for EntitySystem
     fn activated(&mut self, entity: &Entity, world: &World)
     {
         if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity, *entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn reactivated(&mut self, entity: &Entity, world: &World)
+    {
+        if self.interested.contains_key(&**entity)
+        {
+            if self.aspect.check(entity, world)
+            {
+                self.inner.reactivated(entity, world);
+            }
+            else
+            {
+                self.interested.remove(&**entity);
+                self.inner.deactivated(entity, world);
+            }
+        }
+        else if self.aspect.check(entity, world)
         {
             self.interested.insert(**entity, *entity);
             self.inner.activated(entity, world);
