@@ -31,7 +31,7 @@
 #![license = "MIT"]
 #![crate_type = "lib"]
 
-#![feature(macro_rules, phase)]
+#![feature(macro_rules, phase, slicing_syntax)]
 #![unstable]
 
 extern crate uuid;
@@ -41,7 +41,7 @@ pub use component::{Component, ComponentId};
 pub use entity::{Entity, EntityBuilder};
 pub use manager::{Manager, MutableManager};
 pub use system::{Passive, System};
-pub use world::{Components, World};
+pub use world::{Components, World, WorldBuilder};
 
 pub mod buffer;
 
