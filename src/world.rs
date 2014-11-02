@@ -270,7 +270,7 @@ impl SystemManager
     {
         if self.passive.contains_key(&key)
         {
-            self.passive.get_mut(&key).process(world);
+            self.passive[key].process(world);
         }
         else
         {
@@ -343,12 +343,12 @@ impl ComponentManager
 
     fn add<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components.get_mut(&TypeId::of::<T>().hash()).add::<T>(entity, &component)
+        self.components[TypeId::of::<T>().hash()].add::<T>(entity, &component)
     }
 
     fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components.get_mut(&TypeId::of::<T>().hash()).set::<T>(entity, &component)
+        self.components[TypeId::of::<T>().hash()].set::<T>(entity, &component)
     }
 
     fn get<T:Component>(&self, entity: &Entity) -> Option<T>
@@ -363,12 +363,12 @@ impl ComponentManager
 
     fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
-        self.components.get_mut(&TypeId::of::<T>().hash()).borrow_mut::<T>(entity)
+        self.components[TypeId::of::<T>().hash()].borrow_mut::<T>(entity)
     }
 
     fn remove<T:Component>(&mut self, entity: &Entity) -> bool
     {
-        self.components.get_mut(&TypeId::of::<T>().hash()).rm(entity)
+        self.components[TypeId::of::<T>().hash()].rm(entity)
     }
 }
 
