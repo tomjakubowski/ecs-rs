@@ -30,7 +30,7 @@ impl Buffer
     {
         if mem::size_of::<T>() != self.stride
         {
-            fail!("Type has invalid size for buffer")
+            panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
         while offset + self.stride > self.bytes.len()
@@ -47,7 +47,7 @@ impl Buffer
     {
         if mem::size_of::<T>() != self.stride
         {
-            fail!("Type has invalid size for buffer")
+            panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
         if offset >= self.bytes.len()
@@ -70,7 +70,7 @@ impl Buffer
     {
         if mem::size_of::<T>() != self.stride
         {
-            fail!("Type has invalid size for buffer")
+            panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
         if offset >= self.bytes.len()
@@ -93,7 +93,7 @@ impl Buffer
     {
         if mem::size_of::<T>() != self.stride
         {
-            fail!("Type has invalid size for buffer")
+            panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
         if offset >= self.bytes.len()
