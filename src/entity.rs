@@ -49,12 +49,12 @@ impl Deref<uint> for Entity
     }
 }
 
-pub trait EntityBuilder
+pub trait EntityBuilder: 'static
 {
     fn build(&mut self, &mut Components, Entity);
 }
 
-impl<'a> EntityBuilder for |&mut Components, Entity|: 'a
+impl EntityBuilder for |&mut Components, Entity|: 'static
 {
     fn build(&mut self, c: &mut Components, e: Entity)
     {
@@ -64,12 +64,12 @@ impl<'a> EntityBuilder for |&mut Components, Entity|: 'a
 
 impl EntityBuilder for () { fn build(&mut self, _: &mut Components, _: Entity) {} }
 
-pub trait EntityModifier
+pub trait EntityModifier: 'static
 {
     fn modify(&mut self, &mut Components, Entity);
 }
 
-impl<'a> EntityModifier for |&mut Components, Entity|: 'a
+impl EntityModifier for |&mut Components, Entity|: 'static
 {
     fn modify(&mut self, c: &mut Components, e: Entity)
     {
