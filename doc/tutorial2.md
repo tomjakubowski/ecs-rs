@@ -7,14 +7,14 @@ An index, and a unique ID (specifically, a UUID).
 The index is used internally to store entity information.
 No two valid entities will have the same index at the same time, or in other
 words, if two entities have the same index, one (if not both) has been
-deleted and is no longer valid.  
+deleted and is no longer valid.
 Indexes are recycled when an entity is removed.
 
 The unique identifier is used to check if two entities are truly equal.
 While it is theoretically possible for two entities to accidentally be
 assigned the same UUID, the player is more likely to be hit by an asteroid
 <sup>_[citation needed]_</sup>, therefore making any potential bugs caused by
-this behaviour redundant.  
+this behaviour redundant.
 In all seriousness, checking for uuid collisions is a
 waste of precious processing time for an event that will probably not happen.
 
@@ -87,7 +87,9 @@ assert!(!world.is_valid(&entity));
 ```
 
 <table style="width:100%">
-<tr><td>[Previous Tutorial](../tutorial1.md)</td>
-<td style="text-align:center">[Top](../tutorials.md)</td>
-<td style="text-align:right">[Next Tutorial](../tutorial3.md)</td></tr>
+<tr>
+<td style="text-align:left"><a href="tutorial1.md">Previous Tutorial</a></td>
+<td style="text-align:center"><a href="tutorials.md">Top</a></td>
+<td style="text-align:right"><a href="tutorial3.md">Next Tutorial</a></td>
+</tr>
 </table>

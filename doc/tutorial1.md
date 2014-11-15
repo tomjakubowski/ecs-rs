@@ -25,7 +25,10 @@ no function needed to call to cleanup. Simply dropping the world is enough.
 If you need to run any functionality before the world is destroyed, you should
 use a passive system (more on that later).
 
+
 <table style="width:100%">
-<tr><td style="text-align:center">[Top](../tutorials.md)</td>
-<td style="text-align:right">[Next Tutorial](../tutorial2.md)</td></tr>
+<tr>
+<td style="text-align:center"><a href="tutorials.md">Top</a></td>
+<td style="text-align:right"><a href="tutorial2.md">Next Tutorial</a></td>
+</tr>
 </table>

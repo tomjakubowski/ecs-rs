@@ -56,7 +56,7 @@ feature! {
 }
 ```
 As of this writing, all the above macros auto-derive the following traits for
-convenience:  
+convenience:
 _(This list will probably change as new features are needed)_
 - Default
 - PartialEq
@@ -141,7 +141,9 @@ remove the velocity component.
 
 
 <table style="width:100%">
-<tr><td>[Previous Tutorial](../tutorial2.md)</td>
-<td style="text-align:center">[Top](../tutorials.md)</td>
-<td style="text-align:right">[Next Tutorial](../tutorial4.md)</td></tr>
+<tr>
+<td style="text-align:left"><a href="tutorial2.md">Previous Tutorial</a></td>
+<td style="text-align:center"><a href="tutorials.md">Top</a></td>
+<td style="text-align:right"><a href="tutorial4.md">Next Tutorial</a></td>
+</tr>
 </table>
