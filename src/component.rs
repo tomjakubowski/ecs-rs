@@ -2,16 +2,15 @@
 //! Store data in parts to allow defining different entities through composition.
 
 use std::collections::Bitv;
-use std::default::Default;
 use std::intrinsics::TypeId;
 use std::mem;
 
 use buffer::Buffer;
 use Entity;
 
-pub trait Component: Copy+Clone+Default+'static {}
+pub trait Component: Copy+'static {}
 
-impl<T:Copy+Clone+Default+'static> Component for T {}
+impl<T:Copy+'static> Component for T {}
 
 pub type ComponentId = u64;
 

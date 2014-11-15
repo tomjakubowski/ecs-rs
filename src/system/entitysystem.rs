@@ -142,7 +142,7 @@ impl System for BulkEntitySystem
 
     fn deactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.remove(&**entity)
+        if self.interested.remove(&**entity).is_some()
         {
             self.inner.deactivated(entity, world);
         }
@@ -223,7 +223,7 @@ impl System for EntitySystem
 
     fn deactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.remove(&**entity)
+        if self.interested.remove(&**entity).is_some()
         {
             self.inner.deactivated(entity, world);
         }

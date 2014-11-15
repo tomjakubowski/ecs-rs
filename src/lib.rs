@@ -60,7 +60,7 @@ mod macros
         ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
         {
             $(
-                #[deriving(Clone, Default, PartialEq, Show)]
+                #[deriving(Default, PartialEq, Show)]
                 pub struct $Name
                 {
                     $(pub $field : $ty),+
@@ -74,7 +74,7 @@ mod macros
         ($($Name:ident;)+) =>
         {
             $(
-                #[deriving(Clone, Default, PartialEq, Show)]
+                #[deriving(Default, PartialEq, Show)]
                 pub struct $Name;
             )+
         };
@@ -85,7 +85,7 @@ mod macros
         ($($Name:ident($Type:ty);)+) =>
         {
             $(
-                #[deriving(Clone, Default, PartialEq, Show)]
+                #[deriving(Default, PartialEq, Show)]
                 pub struct $Name(pub $Type);
 
                 impl Deref<$Type> for $Name
