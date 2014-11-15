@@ -2,7 +2,11 @@
 
 name = "ecs"
 version = "0.7.1"
-authors = ["HeroesGrave <heroesgrave@gmail.com>"]
+authors = [
+    "HeroesGrave <heroesgrave@gmail.com>",
+    "Tom Bebbington <tophattedcoder@gmail.com>",
+    "Jake Kerr <kodafox@gmail.com>",
+]
 
 [dependencies.uuid]
 
