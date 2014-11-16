@@ -52,10 +52,9 @@ fn tutorial2()
     assert!(entity.get_id() != entity2.get_id());
 }
 
-#[allow(warnings)]
 mod tutorial3
 {
-    use ecs::{Components, Entity, World, WorldBuilder};
+    use ecs::{Components, Entity, WorldBuilder};
 
     component! {
         Position {
@@ -125,5 +124,39 @@ mod tutorial3
         assert_eq!(Team(2), world.get_component(&entity).unwrap());
         assert!(!world.has_component(&entity, velocity_id));
         assert!(world.has_component(&entity, component_id!(CanFly)));
+    }
+}
+
+mod tutorial4
+{
+    use ecs::{Aspect, Entity, EntityData, WorldBuilder};
+    use ecs::system::{EntityProcess, EntitySystem};
+
+    pub struct PrintEntityID;
+
+    impl EntityProcess for PrintEntityID
+    {
+        fn process(&self, entity: &Entity, _: &mut EntityData)
+        {
+            println!("Processed Entity: {}", entity.get_id());
+        }
+    }
+
+    #[test]
+    fn tutorial4()
+    {
+        let process = PrintEntityID;
+        let system = EntitySystem::new(box process, Aspect::nil());
+
+        let mut builder = WorldBuilder::new();
+        builder.register_system(box system);
+        let mut world = builder.build();
+
+        for _ in range(0i, 3)
+        {
+            world.build_entity(());
+        }
+
+        world.update();
     }
 }
