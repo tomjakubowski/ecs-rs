@@ -1,7 +1,6 @@
 
 //! Types to process the world and entities.
 
-pub use self::entitysystem::{BulkEntitySystem, BulkEntityProcess};
 pub use self::entitysystem::{EntitySystem, EntityProcess};
 
 use EntityData;

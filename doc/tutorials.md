@@ -6,6 +6,7 @@ ecs-rs Guides/Tutorials
 - [Entities](tutorial2.md)
 - [Components](tutorial3.md)
 - [Basic Systems](tutorial4.md)
+- [Aspects](tutorial5.md)
 
 ## Intermediate
 

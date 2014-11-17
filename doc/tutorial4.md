@@ -11,7 +11,7 @@ The role of systems is quite broad, and so is spread over a few tutorials.
 Rather than explain the basics of a system, we'll start off using helper types
 for the most common use case: Entity Logic.
 
-There are two helper types for this: `EntitySystem` and `BulkEntitySystem`.
+The library includes a helper type for this: `EntitySystem`.
 
 ## EntitySystem
 
@@ -23,10 +23,10 @@ The constructor for `EntitySystem` looks like this:
 ```rust
 pub fn new(T, Aspect) -> EntitySystem<T> // T: EntityProcess
 ```
-Those are two types that we haven't come across yet. The `Box<EntityProcess>`
-is an implementation of `EntityProcess`, which defines what we do with the
-entities that meet the requirements. The second argument, `Aspect`, defines
-those requirements, and acts like a filter to pick out which activated
+Those are two types that we haven't come across yet. The `T: EntityProcess`
+is an implementation of the `EntityProcess` trait, which defines what we do
+with the entities that meet the requirements. The second argument, `Aspect`,
+defines those requirements, and acts like a filter to pick out which activated
 entities the system wants to process.
 
 (The next tutorial has a closer look at `Aspect`s)
@@ -35,11 +35,10 @@ entities the system wants to process.
 
 The `EntityProcess` trait looks like the following:
 ```rust
-pub trait EntityProcess: 'static
+pub trait EntityProcess: System
 {
-    // This method is called each update cycle for each entity that meets
-    // the requirements.
-    fn process(&self, &Entity, &mut EntityData);
+    // This method is called each update cycle with an iterator of entities that fulfill the requirements.
+    fn process<'a, T: Iterator<&'a Entity>>(&self, T, &mut EntityData);
 }
 ```
 The only method you need to implement is `process()`, but if you need some
@@ -52,13 +51,16 @@ pub struct PrintEntityID;
 
 impl EntityProcess for PrintEntityID
 {
-    fn process(&self, entity: &Entity, _: &mut EntityData)
+    fn process<'a, T: Iterator<&'a Entity>>(&self, mut entities: T, _: &mut EntityData)
     {
-        println!("Processed Entity: {}", entity.get_id());
+        for entity in entities
+        {
+            println!("Processed Entity: {}", entity.get_id());
+        }
     }
 }
 
-impl System for PrintEntityID {} // Empty implementation, but there are some methods that may be overriden.
+impl System for PrintEntityID {}// Empty implementation, but there are some methods that may be overriden.
 ```
 Of course, this is not a system by itself, and so cannot be registered to the
 world. We need to use this `EntityProcess` to construct an `EntitySystem`.

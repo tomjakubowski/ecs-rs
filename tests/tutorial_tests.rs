@@ -136,9 +136,12 @@ mod tutorial4
 
     impl EntityProcess for PrintEntityID
     {
-        fn process(&self, entity: &Entity, _: &mut EntityData)
+        fn process<'a, T: Iterator<&'a Entity>>(&self, mut entities: T, _: &mut EntityData)
         {
-            println!("Processed Entity: {}", entity.get_id());
+            for entity in entities
+            {
+                println!("Processed Entity: {}", entity.get_id());
+            }
         }
     }
 
