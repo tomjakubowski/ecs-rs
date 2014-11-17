@@ -21,7 +21,7 @@ entities that satisfy those requirements.
 
 The constructor for `EntitySystem` looks like this:
 ```rust
-pub fn new(Box<EntityProcess>, Aspect) -> EntitySystem
+pub fn new(T, Aspect) -> EntitySystem<T> // T: EntityProcess
 ```
 Those are two types that we haven't come across yet. The `Box<EntityProcess>`
 is an implementation of `EntityProcess`, which defines what we do with the
@@ -40,36 +40,6 @@ pub trait EntityProcess: 'static
     // This method is called each update cycle for each entity that meets
     // the requirements.
     fn process(&self, &Entity, &mut EntityData);
-
-    fn preprocess(&mut self, _: &World)
-    {
-        // Code we want to run before processing all the entities.
-    }
-
-    fn postprocess(&mut self, _: &World)
-    {
-        // Code we want to run after processing all the entities.
-    }
-
-    fn activated(&mut self, _: &Entity, _: &World)
-    {
-        // Code we want to run when an entity is accepted by the system.
-    }
-
-    fn reactivated(&mut self, e: &Entity, w: &World)
-    {
-        // Code we want to run when an entity has its components changed.
-        // The default implementation simply deletes it from the system and
-        // if it still meets the requirements, it will be re-registered.
-        // You may override this if you wish.
-        self.deactivated(e, w);
-        self.activated(e, w);
-    }
-
-    fn deactivated(&mut self, _: &Entity, _: &World)
-    {
-        // Code we want to run when an entity is deleted from the system.
-    }
 }
 ```
 The only method you need to implement is `process()`, but if you need some
@@ -80,19 +50,21 @@ Here's a basic implementation that just prints the entity IDs.
 ```rust
 pub struct PrintEntityID;
 
-impl EntitySystem for PrintEntityID
+impl EntityProcess for PrintEntityID
 {
     fn process(&self, entity: &Entity, _: &mut EntityData)
     {
         println!("Processed Entity: {}", entity.get_id());
     }
 }
+
+impl System for PrintEntityID {} // Empty implementation, but there are some methods that may be overriden.
 ```
 Of course, this is not a system by itself, and so cannot be registered to the
 world. We need to use this `EntityProcess` to construct an `EntitySystem`.
 ```rust
 let process = PrintEntityID;
-let system = EntitySystem::new(box process, Aspect::nil());
+let system = EntitySystem::new(process, Aspect::nil());
 ```
 `Aspect::nil()` returns an empty aspect. Or in other words, all entities meet
 the requirements and will be accepted by the `EntitySystem`.
