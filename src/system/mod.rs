@@ -10,24 +10,9 @@ use World;
 
 pub mod entitysystem;
 
-/// Generic system type.
+/// Generic base system type.
 pub trait System: 'static
 {
-    /// Process the world.
-    fn process(&self, &mut EntityData);
-
-    /// Optional method called before processing.
-    fn preprocess(&mut self, _: &World)
-    {
-
-    }
-
-    /// Optional method called after proceessing.
-    fn postprocess(&mut self, _: &World)
-    {
-
-    }
-
     /// Optional method called when an entity is activated.
     fn activated(&mut self, _: &Entity, _: &World)
     {
@@ -48,48 +33,34 @@ pub trait System: 'static
     {
 
     }
+}
+
+/// Generic active system type.
+pub trait Active: System
+{
+    /// Process the world.
+    fn process(&mut self, &mut EntityData);
 }
 
 /// Generic passive system type.
-pub trait Passive: 'static
+pub trait Passive: System
 {
     /// Process the world.
     fn process(&mut self, &World);
-
-    /// Optional method called when an entity is activated.
-    fn activated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
-
-    /// Optional method called when an entity is reactivated.
-    ///
-    /// By default it calls deactivated() followed by activated()
-    fn reactivated(&mut self, e: &Entity, w: &World)
-    {
-        self.deactivated(e, w);
-        self.activated(e, w);
-    }
-
-    /// Optional method called when an entity is deactivated.
-    fn deactivated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
 }
 
 /// System which operates every certain number of updates.
-pub struct IntervalSystem
+pub struct IntervalSystem<T: Active>
 {
     interval: u8,
     ticker: u8,
-    inner: Box<System>,
+    inner: T,
 }
 
-impl IntervalSystem
+impl<T: Active> IntervalSystem<T>
 {
     /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: Box<System>, interval: u8) -> IntervalSystem
+    pub fn new(system: T, interval: u8) -> IntervalSystem<T>
     {
         IntervalSystem
         {
@@ -100,37 +71,19 @@ impl IntervalSystem
     }
 }
 
-impl System for IntervalSystem
+impl<T: Active> Active for IntervalSystem<T>
 {
-    fn process(&self, c: &mut EntityData)
+    fn process(&mut self, c: &mut EntityData)
     {
         if self.ticker == self.interval
         {
             self.inner.process(c);
         }
     }
+}
 
-    fn preprocess(&mut self, w: &World)
-    {
-        if self.ticker < self.interval
-        {
-            self.ticker += 1;
-        }
-        if self.ticker == self.interval
-        {
-            self.inner.preprocess(w);
-        }
-    }
-
-    fn postprocess(&mut self, w: &World)
-    {
-        if self.ticker == self.interval
-        {
-            self.inner.postprocess(w);
-            self.ticker = 0;
-        }
-    }
-
+impl<T: Active> System for IntervalSystem<T>
+{
     fn activated(&mut self, e: &Entity, w: &World)
     {
         self.inner.activated(e, w);

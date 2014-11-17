@@ -129,7 +129,7 @@ mod tutorial3
 
 mod tutorial4
 {
-    use ecs::{Aspect, Entity, EntityData, WorldBuilder};
+    use ecs::{Aspect, Entity, EntityData, System, WorldBuilder};
     use ecs::system::{EntityProcess, EntitySystem};
 
     pub struct PrintEntityID;
@@ -142,11 +142,13 @@ mod tutorial4
         }
     }
 
+    impl System for PrintEntityID {}
+
     #[test]
     fn tutorial4()
     {
         let process = PrintEntityID;
-        let system = EntitySystem::new(box process, Aspect::nil());
+        let system = EntitySystem::new(process, Aspect::nil());
 
         let mut builder = WorldBuilder::new();
         builder.register_system(box system);

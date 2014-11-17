@@ -9,7 +9,7 @@ use std::mem;
 use {Component, ComponentId};
 use {Entity, EntityBuilder, EntityModifier};
 use {Manager, MutableManager};
-use {Passive, System};
+use {Active, Passive, System};
 use component::ComponentList;
 use entity::EntityManager;
 
@@ -49,7 +49,7 @@ struct ComponentManager
 
 struct SystemManager
 {
-    systems: Vec<Box<System>>,
+    systems: Vec<Box<Active>>,
     passive: HashMap<&'static str, Box<Passive>>,
 }
 
@@ -65,9 +65,7 @@ impl World
     /// Updates the world by processing all systems.
     pub fn update(&mut self)
     {
-        self.systems.borrow_mut().preprocess(self);
-        self.systems.borrow().process(self.entity_data());
-        self.systems.borrow_mut().postprocess(self);
+        self.systems.borrow_mut().process(self.entity_data());
         let mut queue = Vec::new();
         mem::swap(&mut queue, &mut *self.build_queue.borrow_mut());
         for (entity, mut builder) in queue.into_iter()
@@ -232,7 +230,7 @@ impl SystemManager
         }
     }
 
-    pub fn register(&mut self, sys: Box<System>)
+    pub fn register(&mut self, sys: Box<Active>)
     {
         self.systems.push(sys);
     }
@@ -242,27 +240,11 @@ impl SystemManager
         self.passive.insert(key, sys);
     }
 
-    pub fn preprocess(&mut self, world: &World)
+    pub fn process(&mut self, mut components: EntityData)
     {
         for sys in self.systems.iter_mut()
-        {
-            sys.preprocess(world);
-        }
-    }
-
-    pub fn process(&self, mut components: EntityData)
-    {
-        for sys in self.systems.iter()
         {
             sys.process(&mut components);
-        }
-    }
-
-    pub fn postprocess(&mut self, world: &World)
-    {
-        for sys in self.systems.iter_mut()
-        {
-            sys.postprocess(world);
         }
     }
 
@@ -470,7 +452,7 @@ impl WorldBuilder
     }
 
     /// Registers a system.
-    pub fn register_system(&mut self, sys: Box<System>)
+    pub fn register_system(&mut self, sys: Box<Active>)
     {
         self.world.systems.borrow_mut().register(sys);
     }

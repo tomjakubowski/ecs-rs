@@ -6,83 +6,31 @@ use std::collections::TrieMap;
 use Aspect;
 use EntityData;
 use Entity;
-use System;
+use {Active, System};
 use World;
 
-pub trait EntityProcess: 'static
+pub trait EntityProcess: System
 {
     fn process(&self, &Entity, &mut EntityData);
-
-    fn preprocess(&mut self, _: &World)
-    {
-
-    }
-
-    fn postprocess(&mut self, _: &World)
-    {
-
-    }
-
-    fn activated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
-
-    fn reactivated(&mut self, e: &Entity, w: &World)
-    {
-        self.deactivated(e, w);
-        self.activated(e, w);
-    }
-
-    fn deactivated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
 }
 
-pub trait BulkEntityProcess: 'static
+pub trait BulkEntityProcess: System
 {
     fn process(&self, Vec<&Entity>, &mut EntityData);
-
-    fn preprocess(&mut self, _: &World)
-    {
-
-    }
-
-    fn postprocess(&mut self, _: &World)
-    {
-
-    }
-
-    fn activated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
-
-    fn reactivated(&mut self, e: &Entity, w: &World)
-    {
-        self.deactivated(e, w);
-        self.activated(e, w);
-    }
-
-    fn deactivated(&mut self, _: &Entity, _: &World)
-    {
-
-    }
 }
 
 /// Entity System that operates on all interested entities at once.
-pub struct BulkEntitySystem
+pub struct BulkEntitySystem<T: BulkEntityProcess>
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<BulkEntityProcess>,
+    inner: T,
 }
 
-impl BulkEntitySystem
+impl<T: BulkEntityProcess> BulkEntitySystem<T>
 {
     /// Return a new entity system with the specified bulk process.
-    pub fn new(inner: Box<BulkEntityProcess>, aspect: Aspect) -> BulkEntitySystem
+    pub fn new(inner: T, aspect: Aspect) -> BulkEntitySystem<T>
     {
         BulkEntitySystem
         {
@@ -93,23 +41,16 @@ impl BulkEntitySystem
     }
 }
 
-impl System for BulkEntitySystem
+impl<T: BulkEntityProcess> Active for BulkEntitySystem<T>
 {
-    fn process(&self, c: &mut EntityData)
+    fn process(&mut self, c: &mut EntityData)
     {
         self.inner.process(FromIterator::from_iter(self.interested.values()), c);
     }
+}
 
-    fn preprocess(&mut self, w: &World)
-    {
-        self.inner.preprocess(w);
-    }
-
-    fn postprocess(&mut self, w: &World)
-    {
-        self.inner.postprocess(w);
-    }
-
+impl<T: BulkEntityProcess> System for BulkEntitySystem<T>
+{
     fn activated(&mut self, entity: &Entity, world: &World)
     {
         if self.aspect.check(entity, world)
@@ -150,17 +91,17 @@ impl System for BulkEntitySystem
 }
 
 /// Entity system that processes one entity at a time.
-pub struct EntitySystem
+pub struct EntitySystem<T: EntityProcess>
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
-    inner: Box<EntityProcess>,
+    inner: T,
 }
 
-impl EntitySystem
+impl<T: EntityProcess> EntitySystem<T>
 {
     /// Return a new entity system with the specified process.
-    pub fn new(inner: Box<EntityProcess>, aspect: Aspect) -> EntitySystem
+    pub fn new(inner: T, aspect: Aspect) -> EntitySystem<T>
     {
         EntitySystem
         {
@@ -171,26 +112,19 @@ impl EntitySystem
     }
 }
 
-impl System for EntitySystem
+impl<T: EntityProcess> Active for EntitySystem<T>
 {
-    fn process(&self, c: &mut EntityData)
+    fn process(&mut self, c: &mut EntityData)
     {
         for e in self.interested.values()
         {
             self.inner.process(e, c);
         }
     }
+}
 
-    fn preprocess(&mut self, w: &World)
-    {
-        self.inner.preprocess(w);
-    }
-
-    fn postprocess(&mut self, w: &World)
-    {
-        self.inner.postprocess(w);
-    }
-
+impl<T: EntityProcess> System for EntitySystem<T>
+{
     fn activated(&mut self, entity: &Entity, world: &World)
     {
         if self.aspect.check(entity, world)

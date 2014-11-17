@@ -27,7 +27,7 @@
 //! - The `World` organises all the above items together to make sure everything runs as it should.
 
 #![crate_name = "ecs"]
-#![comment = "Entity Component System Library"]
+#![comment = "Entity Component System Framework"]
 #![license = "MIT"]
 #![crate_type = "lib"]
 
@@ -40,7 +40,7 @@ pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
 pub use entity::{Entity, EntityBuilder, EntityModifier};
 pub use manager::{Manager, MutableManager};
-pub use system::{Passive, System};
+pub use system::{Active, Passive, System};
 pub use world::{Components, EntityData, World, WorldBuilder};
 
 pub mod buffer;
