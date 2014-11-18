@@ -2,6 +2,7 @@
 //! Types to process the world and entities.
 
 pub use self::entitysystem::{EntitySystem, EntityProcess};
+pub use self::entitysystem::{PassiveEntitySystem, PassiveEntityProcess};
 
 use EntityData;
 use Entity;

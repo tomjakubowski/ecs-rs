@@ -62,6 +62,11 @@ impl World
         self.entities.borrow().is_valid(entity)
     }
 
+    pub fn entity_count(&self) -> uint
+    {
+        self.entities.borrow().count()
+    }
+
     /// Updates the world by processing all systems.
     pub fn update(&mut self)
     {
@@ -252,7 +257,8 @@ impl SystemManager
     {
         if self.passive.contains_key(&key)
         {
-            self.passive[key].process(world);
+            let passive: &mut Box<Passive> = &mut self.passive[key];
+            passive.process(world);
         }
         else
         {

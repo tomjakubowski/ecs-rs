@@ -6,7 +6,7 @@ use std::collections::TrieMap;
 use Aspect;
 use EntityData;
 use Entity;
-use {Active, System};
+use {Active, Passive, System};
 use World;
 
 pub trait EntityProcess: System
@@ -14,8 +14,21 @@ pub trait EntityProcess: System
     fn process<'a, T: Iterator<&'a Entity>>(&self, T, &mut EntityData);
 }
 
+pub trait PassiveEntityProcess: System
+{
+    fn process<'a, T: Iterator<&'a Entity>>(&mut self, T, &World);
+}
+
 /// Entity System that operates on all interested entities at once.
 pub struct EntitySystem<T: EntityProcess>
+{
+    interested: TrieMap<Entity>,
+    aspect: Aspect,
+    inner: T,
+}
+
+/// Entity System that operates on all interested entities at once.
+pub struct PassiveEntitySystem<T: PassiveEntityProcess>
 {
     interested: TrieMap<Entity>,
     aspect: Aspect,
@@ -45,6 +58,70 @@ impl<T: EntityProcess> Active for EntitySystem<T>
 }
 
 impl<T: EntityProcess> System for EntitySystem<T>
+{
+    fn activated(&mut self, entity: &Entity, world: &World)
+    {
+        if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity, *entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn reactivated(&mut self, entity: &Entity, world: &World)
+    {
+        if self.interested.contains_key(&**entity)
+        {
+            if self.aspect.check(entity, world)
+            {
+                self.inner.reactivated(entity, world);
+            }
+            else
+            {
+                self.interested.remove(&**entity);
+                self.inner.deactivated(entity, world);
+            }
+        }
+        else if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity, *entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn deactivated(&mut self, entity: &Entity, world: &World)
+    {
+        if self.interested.remove(&**entity).is_some()
+        {
+            self.inner.deactivated(entity, world);
+        }
+    }
+}
+
+
+impl<T: PassiveEntityProcess> PassiveEntitySystem<T>
+{
+    /// Return a new entity system with the specified bulk process.
+    pub fn new(inner: T, aspect: Aspect) -> PassiveEntitySystem<T>
+    {
+        PassiveEntitySystem
+        {
+            interested: TrieMap::new(),
+            aspect: aspect,
+            inner: inner,
+        }
+    }
+}
+
+impl<T: PassiveEntityProcess> Passive for PassiveEntitySystem<T>
+{
+    fn process(&mut self, c: &World)
+    {
+        self.inner.process(self.interested.values(), c);
+    }
+}
+
+impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
 {
     fn activated(&mut self, entity: &Entity, world: &World)
     {

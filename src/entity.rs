@@ -2,6 +2,7 @@
 //! Entity identifier and manager types.
 
 use std::collections::Bitv;
+use std::default::Default;
 use uuid::Uuid;
 
 use Components;
@@ -36,6 +37,14 @@ impl Entity
     {
         let &Entity(_, id) = self;
         id
+    }
+}
+
+impl Default for Entity
+{
+    fn default() -> Entity
+    {
+        Entity::nil()
     }
 }
 
@@ -101,6 +110,11 @@ impl EntityManager
         }
     }
 
+    pub fn count(&self) -> uint
+    {
+        self.ids.count()
+    }
+
     /// Creates a new `Entity`, assigning it the first available identifier.
     pub fn create_entity(&mut self) -> Entity
     {
@@ -152,6 +166,11 @@ impl IdPool
             recycled: Vec::new(),
             next_id: 1u,
         }
+    }
+
+    pub fn count(&self) -> uint
+    {
+        self.next_id - self.recycled.len()
     }
 
     pub fn get_id(&mut self) -> uint
