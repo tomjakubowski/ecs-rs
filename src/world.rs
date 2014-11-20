@@ -331,27 +331,55 @@ impl ComponentManager
 
     fn add<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components[TypeId::of::<T>().hash()].add::<T>(entity, &component)
+        match self.components.get_mut(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => entry.add::<T>(entity, &component),
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                false
+            }
+        }
     }
 
     fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
     {
-        self.components[TypeId::of::<T>().hash()].set::<T>(entity, &component)
+        match self.components.get_mut(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => entry.set::<T>(entity, &component),
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                false
+            }
+        }
     }
 
     fn get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
-        self.components[TypeId::of::<T>().hash()].get::<T>(entity)
+        match self.components.get(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => entry.get::<T>(entity),
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                None
+            }
+        }
     }
 
     pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
-        self.components[id].has(entity)
+        match self.components.get(&id)
+        {
+            Some(entry) => entry.has(entity),
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                false
+            }
+        }
     }
 
     fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
-        self.components[TypeId::of::<T>().hash()].borrow_mut::<T>(entity)
+        self.components.get_mut(&TypeId::of::<T>().hash()).and_then(|entry| entry.borrow_mut::<T>(entity))
     }
 
     fn remove<T:Component>(&mut self, entity: &Entity) -> bool

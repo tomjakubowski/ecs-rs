@@ -75,8 +75,10 @@ impl<T: Active> Active for IntervalSystem<T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
+        self.ticker += 1;
         if self.ticker == self.interval
         {
+            self.ticker = 0;
             self.inner.process(c);
         }
     }
