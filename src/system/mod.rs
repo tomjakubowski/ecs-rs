@@ -3,12 +3,14 @@
 
 pub use self::entitysystem::{EntitySystem, EntityProcess};
 pub use self::entitysystem::{PassiveEntitySystem, PassiveEntityProcess};
+pub use self::interactsystem::{InteractSystem, InteractProcess};
 
 use EntityData;
 use Entity;
 use World;
 
 pub mod entitysystem;
+pub mod interactsystem;
 
 /// Generic base system type.
 pub trait System: 'static

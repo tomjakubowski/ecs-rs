@@ -17,6 +17,7 @@ pub struct World
 {
     build_queue: RefCell<Vec<(Entity, Box<EntityBuilder+'static>)>>,
     modify_queue: RefCell<Vec<(Entity, Box<EntityModifier+'static>)>>,
+    remove_queue: RefCell<Vec<Entity>>,
     entities: RefCell<EntityManager>,
     components: RefCell<ComponentManager>,
     systems: RefCell<SystemManager>,
@@ -40,6 +41,7 @@ pub struct Components<'a>
 pub struct EntityData<'a>
 {
     inner: RefMut<'a, ComponentManager>,
+    world: &'a World,
 }
 
 struct ComponentManager
@@ -99,6 +101,12 @@ impl World
                 println!("[ecs] WARNING: Couldn't modify invalid entity");
             }
         }
+        let mut queue = Vec::new();
+        mem::swap(&mut queue, &mut *self.remove_queue.borrow_mut());
+        for entity in queue.into_iter()
+        {
+            self.delete_entity(&entity);
+        }
     }
 
     /// Updates the passive system corresponding to `key`
@@ -137,6 +145,12 @@ impl World
         self.modify_queue.borrow_mut().push((entity, box modifier));
     }
 
+    /// Queues a entity to be removed at the end of the next update cycle.
+    pub fn queue_removal(&self, entity: Entity)
+    {
+        self.remove_queue.borrow_mut().push(entity);
+    }
+
     /// Deletes an entity, deactivating it if it is activated
     ///
     /// If the entity is invalid a warning is issued and this method does nothing.
@@ -153,8 +167,8 @@ impl World
             {
                 manager.deactivated(entity, self);
             }
-            self.entities.borrow_mut().delete_entity(entity);
             self.components.borrow_mut().delete_entity(entity);
+            self.entities.borrow_mut().delete_entity(entity);
         }
         else
         {
@@ -211,7 +225,8 @@ impl World
     {
         EntityData
         {
-            inner: self.components.borrow_mut()
+            inner: self.components.borrow_mut(),
+            world: self,
         }
     }
 
@@ -335,7 +350,7 @@ impl ComponentManager
         {
             Some(entry) => entry.add::<T>(entity, &component),
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                println!("[ecs] WARNING: Attempted to add an unregistered component");
                 false
             }
         }
@@ -347,7 +362,7 @@ impl ComponentManager
         {
             Some(entry) => entry.set::<T>(entity, &component),
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                println!("[ecs] WARNING: Attempted to modify an unregistered component");
                 false
             }
         }
@@ -439,6 +454,24 @@ impl<'a> EntityData<'a>
     {
         self.inner.has(entity, id)
     }
+
+    /// Queues a entity to be built at the end of the next update cycle.
+    pub fn build_entity<T: EntityBuilder>(&self, builder: T) -> Entity
+    {
+        self.world.queue_builder(builder)
+    }
+
+    /// Queues a entity to be modified at the end of the next update cycle.
+    pub fn modify_entity<T: EntityModifier>(&self, entity: Entity, modifier: T)
+    {
+        self.world.queue_modifier(entity, modifier)
+    }
+
+    /// Queues a entity to be removed at the end of the next update cycle.
+    pub fn remove_entity(&self, entity: Entity)
+    {
+        self.world.queue_removal(entity)
+    }
 }
 
 impl WorldBuilder
@@ -450,6 +483,7 @@ impl WorldBuilder
             world: World {
                 build_queue: RefCell::new(Vec::new()),
                 modify_queue: RefCell::new(Vec::new()),
+                remove_queue: RefCell::new(Vec::new()),
                 entities: RefCell::new(EntityManager::new()),
                 components: RefCell::new(ComponentManager::new()),
                 systems: RefCell::new(SystemManager::new()),

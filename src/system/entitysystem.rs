@@ -19,7 +19,6 @@ pub trait PassiveEntityProcess: System
     fn process<'a, T: Iterator<&'a Entity>>(&mut self, T, &World);
 }
 
-/// Entity System that operates on all interested entities at once.
 pub struct EntitySystem<T: EntityProcess>
 {
     interested: TrieMap<Entity>,
@@ -27,7 +26,6 @@ pub struct EntitySystem<T: EntityProcess>
     inner: T,
 }
 
-/// Entity System that operates on all interested entities at once.
 pub struct PassiveEntitySystem<T: PassiveEntityProcess>
 {
     interested: TrieMap<Entity>,
@@ -37,7 +35,6 @@ pub struct PassiveEntitySystem<T: PassiveEntityProcess>
 
 impl<T: EntityProcess> EntitySystem<T>
 {
-    /// Return a new entity system with the specified bulk process.
     pub fn new(inner: T, aspect: Aspect) -> EntitySystem<T>
     {
         EntitySystem
@@ -101,7 +98,6 @@ impl<T: EntityProcess> System for EntitySystem<T>
 
 impl<T: PassiveEntityProcess> PassiveEntitySystem<T>
 {
-    /// Return a new entity system with the specified bulk process.
     pub fn new(inner: T, aspect: Aspect) -> PassiveEntitySystem<T>
     {
         PassiveEntitySystem
