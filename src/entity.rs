@@ -124,7 +124,7 @@ impl EntityManager
             let diff = *ret - self.entities.len();
             self.entities.grow(diff+1, Entity(0, Uuid::nil()));
         }
-        self.entities[mut][*ret] = ret;
+        self.entities[*ret] = ret;
 
         if *ret >= self.enabled.len()
         {
@@ -145,7 +145,7 @@ impl EntityManager
     /// Deletes an entity from the manager.
     pub fn delete_entity(&mut self, entity: &Entity)
     {
-        self.entities[mut][**entity] = Entity(0, Uuid::nil());
+        self.entities[**entity] = Entity(0, Uuid::nil());
         self.enabled.set(**entity, false);
         self.ids.return_id(**entity);
     }

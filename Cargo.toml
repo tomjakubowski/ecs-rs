@@ -19,4 +19,4 @@ keywords = [
 ]
 
 [dependencies]
-uuid = "^0"
+uuid = "~0.1.0"

@@ -27,11 +27,9 @@
 //! - The `World` organises all the above items together to make sure everything runs as it should.
 
 #![crate_name = "ecs"]
-#![comment = "Entity Component System Framework"]
-#![license = "MIT"]
 #![crate_type = "lib"]
 
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(macro_rules)]
 #![unstable]
 
 extern crate uuid;
