@@ -10,6 +10,12 @@ use std::rc::Rc;
 use Entity;
 use World;
 
+pub use self::group::GroupManager;
+pub use self::player::PlayerManager;
+
+pub mod group;
+pub mod player;
+
 /// Mutable manager
 pub trait Manager: Any
 {
