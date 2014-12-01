@@ -3,6 +3,7 @@
 
 //! Traits to observe and manage entities as they are changed in the world.
 
+use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -10,7 +11,7 @@ use Entity;
 use World;
 
 /// Mutable manager
-pub trait MutableManager: 'static
+pub trait Manager: Any
 {
     /// Called when an entity is added to the world.
     fn activated(&mut self, &Entity, &World);
@@ -20,18 +21,7 @@ pub trait MutableManager: 'static
     fn deactivated(&mut self, &Entity, &World);
 }
 
-/// Immutable manager
-pub trait Manager: 'static
-{
-    /// Called when an entity is added to the world.
-    fn activated(&self, &Entity, &World);
-    /// Called when an entity is modified in the world.
-    fn reactivated(&self, &Entity, &World);
-    /// Called when an entity is removed from the world.
-    fn deactivated(&self, &Entity, &World);
-}
-
-impl<T: MutableManager> MutableManager for Rc<RefCell<T>>
+impl<T: Manager> Manager for Rc<RefCell<T>>
 {
     fn activated(&mut self, e: &Entity, w: &World)
     {

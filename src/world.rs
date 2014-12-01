@@ -1,6 +1,7 @@
 
 //! Management of entities, components, systems, and managers
 
+use std::any::{Any, AnyRefExt, AnyMutRefExt};
 use std::cell::{RefMut, RefCell};
 use std::collections::HashMap;
 use std::intrinsics::TypeId;
@@ -8,7 +9,7 @@ use std::mem;
 
 use {Component, ComponentId};
 use {Entity, EntityBuilder, EntityModifier};
-use {Manager, MutableManager};
+use {Manager};
 use {Active, Passive, System};
 use component::ComponentList;
 use entity::EntityManager;
@@ -21,8 +22,7 @@ pub struct World
     entities: RefCell<EntityManager>,
     components: RefCell<ComponentManager>,
     systems: RefCell<SystemManager>,
-    mut_managers: Vec<RefCell<Box<MutableManager>>>,
-    managers: Vec<Box<Manager>>,
+    managers: HashMap<&'static str, RefCell<Box<Manager>>>,
 }
 
 #[experimental]
@@ -159,13 +159,9 @@ impl World
         if self.is_valid(entity)
         {
             self.systems.borrow_mut().deactivated(entity, self);
-            for ref manager in self.mut_managers.iter()
+            for ref manager in self.managers.values()
             {
                 manager.borrow_mut().deactivated(entity, self);
-            }
-            for ref manager in self.managers.iter()
-            {
-                manager.deactivated(entity, self);
             }
             self.components.borrow_mut().delete_entity(entity);
             self.entities.borrow_mut().delete_entity(entity);
@@ -174,6 +170,24 @@ impl World
         {
             println!("[ecs] WARNING: Cannot delete invalid entity")
         }
+    }
+
+    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> Option<U>
+    {
+        self.managers.get(&key).and_then(|a|
+            (&*a.borrow() as &Any).downcast_ref().map(
+                |m| call(m)
+            )
+        )
+    }
+    
+    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> Option<U>
+    {
+        self.managers.get(&key).and_then(|a|
+            (&mut *a.borrow_mut() as &mut Any).downcast_mut().map(
+                |m| call(m)
+            )
+        )
     }
 
     /// Returns the value of a component for an entity (or None)
@@ -198,26 +212,18 @@ impl World
     fn activate_entity(&mut self, entity: &Entity)
     {
         self.systems.borrow_mut().activated(entity, self);
-        for ref manager in self.mut_managers.iter()
+        for ref manager in self.managers.values()
         {
             manager.borrow_mut().activated(entity, self);
-        }
-        for ref manager in self.managers.iter()
-        {
-            manager.activated(entity, self);
         }
     }
 
     fn reactivate_entity(&mut self, entity: &Entity)
     {
         self.systems.borrow_mut().reactivated(entity, self);
-        for ref manager in self.mut_managers.iter()
+        for ref manager in self.managers.values()
         {
             manager.borrow_mut().reactivated(entity, self);
-        }
-        for ref manager in self.managers.iter()
-        {
-            manager.reactivated(entity, self);
         }
     }
 
@@ -282,7 +288,7 @@ impl SystemManager
     }
 }
 
-impl MutableManager for SystemManager
+impl Manager for SystemManager
 {
     fn activated(&mut self, e: &Entity, w: &World)
     {
@@ -487,8 +493,7 @@ impl WorldBuilder
                 entities: RefCell::new(EntityManager::new()),
                 components: RefCell::new(ComponentManager::new()),
                 systems: RefCell::new(SystemManager::new()),
-                mut_managers: Vec::new(),
-                managers: Vec::new(),
+                managers: HashMap::new(),
             }
         }
     }
@@ -499,18 +504,11 @@ impl WorldBuilder
         self.world
     }
 
-    /// Registers a mutable manager.
+    /// Registers a manager.
     #[experimental]
-    pub fn register_manager_mut(&mut self, manager: Box<MutableManager>)
+    pub fn register_manager(&mut self, key: &'static str, manager: Box<Manager>)
     {
-        self.world.mut_managers.push(RefCell::new(manager));
-    }
-
-    /// Registers an immutable manager.
-    #[experimental]
-    pub fn register_manager(&mut self, manager: Box<Manager>)
-    {
-        self.world.managers.push(manager);
+        self.world.managers.insert(key, RefCell::new(manager));
     }
 
     /// Registers a component.
