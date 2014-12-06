@@ -1,8 +1,8 @@
 
 //! Management of entities, components, systems, and managers
 
-use std::any::{Any, AnyRefExt, AnyMutRefExt};
-use std::cell::{RefMut, RefCell};
+use std::any::{AnyRefExt, AnyMutRefExt};
+use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::intrinsics::TypeId;
 use std::mem;
@@ -20,12 +20,11 @@ pub struct World
     modify_queue: RefCell<Vec<(Entity, Box<EntityModifier+'static>)>>,
     remove_queue: RefCell<Vec<Entity>>,
     entities: RefCell<EntityManager>,
-    components: RefCell<ComponentManager>,
+    components: ComponentManager,
     systems: RefCell<SystemManager>,
     managers: HashMap<&'static str, RefCell<Box<Manager>>>,
 }
 
-#[experimental]
 pub struct WorldBuilder
 {
     world: World,
@@ -34,19 +33,19 @@ pub struct WorldBuilder
 #[experimental]
 pub struct Components<'a>
 {
-    inner: RefMut<'a, ComponentManager>,
+    inner: &'a ComponentManager,
 }
 
 #[experimental]
 pub struct EntityData<'a>
 {
-    inner: RefMut<'a, ComponentManager>,
+    inner: &'a ComponentManager,
     world: &'a World,
 }
 
 struct ComponentManager
 {
-    components: HashMap<ComponentId, ComponentList>,
+    components: HashMap<ComponentId, RefCell<ComponentList>>,
 }
 
 struct SystemManager
@@ -163,7 +162,7 @@ impl World
             {
                 manager.borrow_mut().deactivated(entity, self);
             }
-            self.components.borrow_mut().delete_entity(entity);
+            self.components.delete_entity(entity);
             self.entities.borrow_mut().delete_entity(entity);
         }
         else
@@ -174,20 +173,41 @@ impl World
 
     pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> Option<U>
     {
-        self.managers.get(&key).and_then(|a|
-            (&*a.borrow() as &Any).downcast_ref().map(
-                |m| call(m)
-            )
-        )
+        match self.managers.get(&key)
+        {
+            Some(any) => match any.borrow().as_any().downcast_ref::<T>() {
+                Some(manager) => Some(call(manager)),
+                None => {
+                    println!("[ecs] WARNING: Could not downcast manager");
+                    None
+                    },
+                },
+            None => {
+                println!("[ecs] WARNING: Could not find any manager for key '{}'", key);
+                None
+            },
+        }
     }
-    
+
     pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> Option<U>
     {
-        self.managers.get(&key).and_then(|a|
-            (&mut *a.borrow_mut() as &mut Any).downcast_mut().map(
-                |m| call(m)
-            )
-        )
+        match self.managers.get(&key)
+        {
+            Some(any) => {
+                match any.borrow_mut().as_any_mut().downcast_mut::<T>()
+                {
+                    Some(manager) => Some(call(manager)),
+                    None => {
+                        println!("[ecs] WARNING: Could not downcast manager");
+                        None
+                    },
+                }
+            },
+            None => {
+                println!("[ecs] WARNING: Could not find any manager for key '{}'", key);
+                None
+            },
+        }
     }
 
     /// Returns the value of a component for an entity (or None)
@@ -195,7 +215,7 @@ impl World
     {
         if self.is_valid(entity)
         {
-            self.components.borrow().get::<T>(entity)
+            self.components.get::<T>(entity)
         }
         else
         {
@@ -206,7 +226,7 @@ impl World
     /// Returns if an entity contains a component.
     pub fn has_component(&self, entity: &Entity, id: ComponentId) -> bool
     {
-        self.components.borrow().has(entity, id)
+        self.components.has(entity, id)
     }
 
     fn activate_entity(&mut self, entity: &Entity)
@@ -231,7 +251,7 @@ impl World
     {
         EntityData
         {
-            inner: self.components.borrow_mut(),
+            inner: &self.components,
             world: self,
         }
     }
@@ -240,7 +260,7 @@ impl World
     {
         Components
         {
-            inner: self.components.borrow_mut()
+            inner: &self.components
         }
     }
 }
@@ -286,10 +306,7 @@ impl SystemManager
             println!("[ecs] WARNING: No passive system registered for key '{}'", key);
         }
     }
-}
 
-impl Manager for SystemManager
-{
     fn activated(&mut self, e: &Entity, w: &World)
     {
         for sys in self.systems.iter_mut()
@@ -339,22 +356,22 @@ impl ComponentManager
 
     pub fn register(&mut self, list: ComponentList)
     {
-        self.components.insert(list.get_cid(), list);
+        self.components.insert(list.get_cid(), RefCell::new(list));
     }
 
     fn delete_entity(&mut self, entity: &Entity)
     {
-        for (_, list) in self.components.iter_mut()
+        for (_, list) in self.components.iter()
         {
-            list.rm(entity);
+            list.borrow_mut().rm(entity);
         }
     }
 
-    fn add<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    fn add<T:Component>(&self, entity: &Entity, component: T) -> bool
     {
-        match self.components.get_mut(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>().hash())
         {
-            Some(entry) => entry.add::<T>(entity, &component),
+            Some(entry) => entry.borrow_mut().add::<T>(entity, &component),
             None => {
                 println!("[ecs] WARNING: Attempted to add an unregistered component");
                 false
@@ -362,11 +379,11 @@ impl ComponentManager
         }
     }
 
-    fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    fn set<T:Component>(&self, entity: &Entity, component: T) -> bool
     {
-        match self.components.get_mut(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>().hash())
         {
-            Some(entry) => entry.set::<T>(entity, &component),
+            Some(entry) => entry.borrow_mut().set::<T>(entity, &component),
             None => {
                 println!("[ecs] WARNING: Attempted to modify an unregistered component");
                 false
@@ -378,7 +395,7 @@ impl ComponentManager
     {
         match self.components.get(&TypeId::of::<T>().hash())
         {
-            Some(entry) => entry.get::<T>(entity),
+            Some(entry) => entry.borrow().get::<T>(entity),
             None => {
                 println!("[ecs] WARNING: Attempted to access an unregistered component");
                 None
@@ -390,7 +407,7 @@ impl ComponentManager
     {
         match self.components.get(&id)
         {
-            Some(entry) => entry.has(entity),
+            Some(entry) => entry.borrow().has(entity),
             None => {
                 println!("[ecs] WARNING: Attempted to access an unregistered component");
                 false
@@ -398,14 +415,50 @@ impl ComponentManager
         }
     }
 
-    fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    fn try_with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
     {
-        self.components.get_mut(&TypeId::of::<T>().hash()).and_then(|entry| entry.borrow_mut::<T>(entity))
+        match self.components.get(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => {
+                if let Some(c) = entry.borrow_mut().borrow_mut::<T>(entity)
+                {
+                    call(c);
+                }
+                true
+            },
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                false
+            }
+        }
     }
 
-    fn remove<T:Component>(&mut self, entity: &Entity) -> bool
+    fn with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
     {
-        self.components[TypeId::of::<T>().hash()].rm(entity)
+        match self.components.get(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => {
+                if let Some(c) = entry.borrow_mut().borrow_mut::<T>(entity)
+                {
+                    call(c);
+                    true
+                }
+                else
+                {
+                    println!("[ecs] WARNING: Unable to access component for entity");
+                    false
+                }
+            },
+            None => {
+                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                false
+            }
+        }
+    }
+
+    fn remove<T:Component>(&self, entity: &Entity) -> bool
+    {
+        self.components.get(&TypeId::of::<T>().hash()).map_or(false, |entry: &RefCell<ComponentList>| entry.borrow_mut().rm(entity))
     }
 }
 
@@ -441,9 +494,14 @@ impl<'a> Components<'a>
 #[experimental]
 impl<'a> EntityData<'a>
 {
-    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    pub fn try_with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
     {
-        self.inner.borrow_mut::<T>(entity)
+        self.inner.try_with::<T>(entity, call)
+    }
+
+    pub fn with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
+    {
+        self.inner.with::<T>(entity, call)
     }
 
     pub fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
@@ -478,6 +536,16 @@ impl<'a> EntityData<'a>
     {
         self.world.queue_removal(entity)
     }
+
+    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> Option<U>
+    {
+        self.world.with_manager(key, call)
+    }
+
+    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> Option<U>
+    {
+        self.world.with_manager_mut(key, call)
+    }
 }
 
 impl WorldBuilder
@@ -491,7 +559,7 @@ impl WorldBuilder
                 modify_queue: RefCell::new(Vec::new()),
                 remove_queue: RefCell::new(Vec::new()),
                 entities: RefCell::new(EntityManager::new()),
-                components: RefCell::new(ComponentManager::new()),
+                components: ComponentManager::new(),
                 systems: RefCell::new(SystemManager::new()),
                 managers: HashMap::new(),
             }
@@ -505,7 +573,6 @@ impl WorldBuilder
     }
 
     /// Registers a manager.
-    #[experimental]
     pub fn register_manager(&mut self, key: &'static str, manager: Box<Manager>)
     {
         self.world.managers.insert(key, RefCell::new(manager));
@@ -514,7 +581,7 @@ impl WorldBuilder
     /// Registers a component.
     pub fn register_component<T: Component>(&mut self)
     {
-        self.world.components.borrow_mut().register(ComponentList::new::<T>());
+        self.world.components.register(ComponentList::new::<T>());
     }
 
     /// Registers a system.

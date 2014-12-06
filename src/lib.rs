@@ -30,6 +30,7 @@
 #![crate_type = "lib"]
 
 #![feature(macro_rules)]
+
 #![unstable]
 
 extern crate uuid;

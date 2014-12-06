@@ -1,18 +1,21 @@
 
 use std::borrow::BorrowFrom;
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
 use std::hash::Hash;
 
 use Entity;
 use Manager;
 use World;
 
-pub struct GroupManager<Key: Hash+Eq+'static>
+pub trait GroupKey: Hash+Eq+'static {}
+impl<T: Hash+Eq+'static> GroupKey for T {}
+
+pub struct GroupManager<Key: GroupKey>
 {
     groups: HashMap<Key, Vec<Entity>>,
 }
 
-impl<Key: Hash+Eq+'static> GroupManager<Key>
+impl<Key: GroupKey> GroupManager<Key>
 {
     pub fn new() -> GroupManager<Key>
     {
@@ -22,14 +25,31 @@ impl<Key: Hash+Eq+'static> GroupManager<Key>
         }
     }
     
+    pub fn create(&mut self, key: Key)
+    {
+        match self.groups.entry(key)
+        {
+            Entry::Vacant(entry) => {
+                entry.set(Vec::new());
+            },
+            _ => (),
+        }
+    }
+    
     pub fn get<Sized? Q>(&self, key: &Q) -> Option<&Vec<Entity>>
         where Q: Hash+Eq+BorrowFrom<Key>
     {
         self.groups.get(key)
     }
+    
+    pub fn delete<Sized? Q>(&mut self, key: &Q) -> Option<Vec<Entity>>
+        where Q: Hash+Eq+BorrowFrom<Key>
+    {
+        self.groups.remove(key)
+    }
 }
 
-impl<Key: Hash+Eq+'static> Index<Key, Vec<Entity>> for GroupManager<Key>
+impl<Key: GroupKey> Index<Key, Vec<Entity>> for GroupManager<Key>
 {
     fn index(&self, i: &Key) -> &Vec<Entity>
     {
@@ -37,7 +57,7 @@ impl<Key: Hash+Eq+'static> Index<Key, Vec<Entity>> for GroupManager<Key>
     }
 }
 
-impl<Key: Hash+Eq+'static> IndexMut<Key, Vec<Entity>> for GroupManager<Key>
+impl<Key: GroupKey> IndexMut<Key, Vec<Entity>> for GroupManager<Key>
 {
     fn index_mut(&mut self, i: &Key) -> &mut Vec<Entity>
     {
@@ -45,12 +65,8 @@ impl<Key: Hash+Eq+'static> IndexMut<Key, Vec<Entity>> for GroupManager<Key>
     }
 }
 
-impl<Key: Hash+Eq+'static> Manager for GroupManager<Key>
+impl<Key: GroupKey> Manager for GroupManager<Key>
 {
-    fn activated(&mut self, _: &Entity, _: &World) {}
-    
-    fn reactivated(&mut self, _: &Entity, _: &World) {}
-
     fn deactivated(&mut self, entity: &Entity, _: &World)
     {
         for (_, ref mut vec) in self.groups.iter_mut()

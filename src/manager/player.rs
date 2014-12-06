@@ -32,9 +32,19 @@ impl PlayerManager
         }
     }
     
+    pub fn add(&mut self, player: uint, entity: Entity) -> Option<Entity>
+    {
+        self.players.insert(player, entity)
+    }
+    
     pub fn get(&self, player: uint) -> Option<&Entity>
     {
         self.players.get(&player)
+    }
+    
+    pub fn remove(&mut self, player: uint) -> Option<Entity>
+    {
+        self.players.remove(&player)
     }
 }
 
@@ -56,8 +66,6 @@ impl IndexMut<uint, Entity> for PlayerManager
 
 impl Manager for PlayerManager
 {
-    fn activated(&mut self, _: &Entity, _: &World) {}
-    
     fn reactivated(&mut self, entity: &Entity, w: &World)
     {
         let mut r = Vec::new();
