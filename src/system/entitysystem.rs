@@ -60,7 +60,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, *entity);
+            self.interested.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }
@@ -81,7 +81,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, *entity);
+            self.interested.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }
@@ -123,7 +123,7 @@ impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, *entity);
+            self.interested.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }
@@ -144,7 +144,7 @@ impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, *entity);
+            self.interested.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }

@@ -115,3 +115,15 @@ mod macros
         };
     }
 }
+
+#[cfg(feature = "panic_on_err")]
+pub fn error(string: &str)
+{
+    panic!("[ecs-rs] ERROR: {}", string);
+}
+
+#[cfg(not(feature = "panic_on_err"))]
+pub fn error(string: &str)
+{
+    println!("[ecs-rs] WARNING: {}", string);
+}

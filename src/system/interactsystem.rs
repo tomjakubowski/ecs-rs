@@ -52,12 +52,12 @@ impl<T: InteractProcess> System for InteractSystem<T>
     {
         if self.aspect_a.check(entity, world)
         {
-            self.interested_a.insert(**entity, *entity);
+            self.interested_a.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
         if self.aspect_b.check(entity, world)
         {
-            self.interested_b.insert(**entity, *entity);
+            self.interested_b.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }
@@ -78,7 +78,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
         else if self.aspect_a.check(entity, world)
         {
-            self.interested_a.insert(**entity, *entity);
+            self.interested_a.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
         if self.interested_b.contains_key(&**entity)
@@ -95,7 +95,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
         else if self.aspect_b.check(entity, world)
         {
-            self.interested_b.insert(**entity, *entity);
+            self.interested_b.insert(**entity, entity.clone());
             self.inner.activated(entity, world);
         }
     }

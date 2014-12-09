@@ -26,6 +26,11 @@ impl Buffer
         }
     }
 
+    pub fn clear(&mut self)
+    {
+        self.bytes = Vec::new();
+    }
+
     pub unsafe fn set<T: Copy+'static>(&mut self, index: uint, val: &T)
     {
         if mem::size_of::<T>() != self.stride

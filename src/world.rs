@@ -13,6 +13,7 @@ use {Manager};
 use {Active, Passive, System};
 use component::ComponentList;
 use entity::EntityManager;
+use error;
 
 pub struct World
 {
@@ -68,6 +69,20 @@ impl World
         self.entities.borrow().count()
     }
 
+    pub fn clear(&mut self)
+    {
+        let entities = self.entities.borrow_mut().clear();
+        for entity in entities.into_iter()
+        {
+            self.systems.borrow_mut().deactivated(&entity, self);
+            for ref manager in self.managers.values()
+            {
+                manager.borrow_mut().deactivated(&entity, self);
+            }
+        }
+        self.components.clear();
+    }
+
     /// Updates the world by processing all systems.
     pub fn update(&mut self)
     {
@@ -78,12 +93,12 @@ impl World
         {
             if self.is_valid(&entity)
             {
-                builder.build(&mut self.components(), entity);
+                builder.build(&mut self.components(), entity.clone());
                 self.activate_entity(&entity);
             }
             else
             {
-                println!("[ecs] WARNING: Couldn't build invalid entity");
+                error("Couldn't build invalid entity");
             }
         }
         let mut queue = Vec::new();
@@ -92,12 +107,12 @@ impl World
         {
             if self.is_valid(&entity)
             {
-                modifier.modify(&mut self.components(), entity);
+                modifier.modify(&mut self.components(), entity.clone());
                 self.reactivate_entity(&entity);
             }
             else
             {
-                println!("[ecs] WARNING: Couldn't modify invalid entity");
+                error("Couldn't modify invalid entity");
             }
         }
         let mut queue = Vec::new();
@@ -118,7 +133,7 @@ impl World
     pub fn build_entity<T: EntityBuilder>(&mut self, mut builder: T) -> Entity
     {
         let entity = self.entities.borrow_mut().create_entity();
-        builder.build(&mut self.components(), entity);
+        builder.build(&mut self.components(), entity.clone());
         self.activate_entity(&entity);
         entity
     }
@@ -126,7 +141,7 @@ impl World
     /// Modifies an entity with the given modifier.
     pub fn modify_entity<T: EntityModifier>(&mut self, entity: Entity, mut modifier: T)
     {
-        modifier.modify(&mut self.components(), entity);
+        modifier.modify(&mut self.components(), entity.clone());
         self.reactivate_entity(&entity);
     }
 
@@ -134,7 +149,7 @@ impl World
     pub fn queue_builder<T: EntityBuilder>(&self, builder: T) -> Entity
     {
         let entity = self.entities.borrow_mut().create_entity();
-        self.build_queue.borrow_mut().push((entity, box builder));
+        self.build_queue.borrow_mut().push((entity.clone(), box builder));
         entity
     }
 
@@ -167,7 +182,7 @@ impl World
         }
         else
         {
-            println!("[ecs] WARNING: Cannot delete invalid entity")
+            error("Cannot delete invalid entity")
         }
     }
 
@@ -178,12 +193,12 @@ impl World
             Some(any) => match any.borrow().as_any().downcast_ref::<T>() {
                 Some(manager) => Some(call(manager)),
                 None => {
-                    println!("[ecs] WARNING: Could not downcast manager");
+                    error("Could not downcast manager");
                     None
                     },
                 },
             None => {
-                println!("[ecs] WARNING: Could not find any manager for key '{}'", key);
+                error(format!("Could not find any manager for key '{}'", key).as_slice());
                 None
             },
         }
@@ -198,13 +213,13 @@ impl World
                 {
                     Some(manager) => Some(call(manager)),
                     None => {
-                        println!("[ecs] WARNING: Could not downcast manager");
+                        error("Could not downcast manager");
                         None
                     },
                 }
             },
             None => {
-                println!("[ecs] WARNING: Could not find any manager for key '{}'", key);
+                error(format!("Could not find any manager for key '{}'", key).as_slice());
                 None
             },
         }
@@ -303,7 +318,7 @@ impl SystemManager
         }
         else
         {
-            println!("[ecs] WARNING: No passive system registered for key '{}'", key);
+            error(format!("No passive system registered for key '{}'", key).as_slice());
         }
     }
 
@@ -354,7 +369,15 @@ impl ComponentManager
         }
     }
 
-    pub fn register(&mut self, list: ComponentList)
+    fn clear(&mut self)
+    {
+        for list in self.components.values()
+        {
+            list.borrow_mut().clear();
+        }
+    }
+
+    fn register(&mut self, list: ComponentList)
     {
         self.components.insert(list.get_cid(), RefCell::new(list));
     }
@@ -373,7 +396,7 @@ impl ComponentManager
         {
             Some(entry) => entry.borrow_mut().add::<T>(entity, &component),
             None => {
-                println!("[ecs] WARNING: Attempted to add an unregistered component");
+                error("Attempted to add an unregistered component");
                 false
             }
         }
@@ -385,7 +408,7 @@ impl ComponentManager
         {
             Some(entry) => entry.borrow_mut().set::<T>(entity, &component),
             None => {
-                println!("[ecs] WARNING: Attempted to modify an unregistered component");
+                error("Attempted to modify an unregistered component");
                 false
             }
         }
@@ -397,7 +420,7 @@ impl ComponentManager
         {
             Some(entry) => entry.borrow().get::<T>(entity),
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                error("Attempted to access an unregistered component");
                 None
             }
         }
@@ -409,7 +432,7 @@ impl ComponentManager
         {
             Some(entry) => entry.borrow().has(entity),
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                error("Attempted to access an unregistered component");
                 false
             }
         }
@@ -427,7 +450,7 @@ impl ComponentManager
                 true
             },
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                error("Attempted to access an unregistered component");
                 false
             }
         }
@@ -445,12 +468,12 @@ impl ComponentManager
                 }
                 else
                 {
-                    println!("[ecs] WARNING: Unable to access component for entity");
+                    error("Unable to access component for entity");
                     false
                 }
             },
             None => {
-                println!("[ecs] WARNING: Attempted to access an unregistered component");
+                error("Attempted to access an unregistered component");
                 false
             }
         }
@@ -458,7 +481,14 @@ impl ComponentManager
 
     fn remove<T:Component>(&self, entity: &Entity) -> bool
     {
-        self.components.get(&TypeId::of::<T>().hash()).map_or(false, |entry: &RefCell<ComponentList>| entry.borrow_mut().rm(entity))
+        match self.components.get(&TypeId::of::<T>().hash())
+        {
+            Some(entry) => entry.borrow_mut().rm(entity),
+            None => {
+                error("Attempted to remove an unregistered component");
+                false
+            }
+        }
     }
 }
 
@@ -475,12 +505,12 @@ impl<'a> Components<'a>
         self.inner.set::<T>(entity, component)
     }
 
-    pub fn get<T:Component>(&mut self, entity: &Entity) -> Option<T>
+    pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
         self.inner.get::<T>(entity)
     }
 
-    pub fn has(&mut self, entity: &Entity, id: ComponentId) -> bool
+    pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
         self.inner.has(entity, id)
     }
@@ -504,17 +534,17 @@ impl<'a> EntityData<'a>
         self.inner.with::<T>(entity, call)
     }
 
-    pub fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    pub fn set<T:Component>(&self, entity: &Entity, component: T) -> bool
     {
         self.inner.set::<T>(entity, component)
     }
 
-    pub fn get<T:Component>(&mut self, entity: &Entity) -> Option<T>
+    pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
         self.inner.get::<T>(entity)
     }
 
-    pub fn has(&mut self, entity: &Entity, id: ComponentId) -> bool
+    pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
         self.inner.has(entity, id)
     }

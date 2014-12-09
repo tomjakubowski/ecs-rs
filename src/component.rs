@@ -34,6 +34,12 @@ impl ComponentList
         }
     }
 
+    pub fn clear(&mut self)
+    {
+        self.buffer.clear();
+        self.enabled = Bitv::new();
+    }
+
     pub fn add<T:Component>(&mut self, entity: &Entity, component: &T) -> bool
     {
         if **entity < self.enabled.len() && self.enabled.get(**entity)

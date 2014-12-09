@@ -27,16 +27,14 @@ impl Entity
     #[inline]
     pub fn get_index(&self) -> uint
     {
-        let &Entity(i, _) = self;
-        i
+        self.0.clone()
     }
 
     /// Returns the entity's unique identifier.
     #[inline]
     pub fn get_id(&self) -> Uuid
     {
-        let &Entity(_, id) = self;
-        id
+        self.1.clone()
     }
 }
 
@@ -53,8 +51,7 @@ impl Deref<uint> for Entity
     #[inline]
     fn deref(&self) -> &uint
     {
-        let &Entity(ref i, _) = self;
-        i
+        &self.0
     }
 }
 
@@ -110,6 +107,16 @@ impl EntityManager
         }
     }
 
+    pub fn clear(&mut self) -> Vec<Entity>
+    {
+        let mut vec = Vec::new();
+        ::std::mem::swap(&mut vec, &mut self.entities);
+        vec.retain(|e| self.enabled[**e]);
+        self.enabled = Bitv::new();
+        self.ids = IdPool::new();
+        vec
+    }
+
     pub fn count(&self) -> uint
     {
         self.ids.count()
@@ -124,7 +131,7 @@ impl EntityManager
             let diff = *ret - self.entities.len();
             self.entities.grow(diff+1, Entity(0, Uuid::nil()));
         }
-        self.entities[*ret] = ret;
+        self.entities[*ret] = ret.clone();
 
         if *ret >= self.enabled.len()
         {
