@@ -1,6 +1,7 @@
 
 //! Types to process the world and entities.
 
+pub use self::datasystem::{DataMap, DataSystem, DataProcess};
 pub use self::entitysystem::{EntitySystem, EntityProcess};
 pub use self::entitysystem::{PassiveEntitySystem, PassiveEntityProcess};
 pub use self::interactsystem::{InteractSystem, InteractProcess};
@@ -9,6 +10,7 @@ use EntityData;
 use Entity;
 use World;
 
+pub mod datasystem;
 pub mod entitysystem;
 pub mod interactsystem;
 

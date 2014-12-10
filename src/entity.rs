@@ -3,24 +3,25 @@
 
 use std::collections::Bitv;
 use std::default::Default;
-use uuid::Uuid;
 
 use Components;
+
+pub type Id = u64;
 
 /// Dual identifier for an entity.
 ///
 /// The first element (uint) is the entity's index, used to locate components.
 /// This value can be recycled, so the second element (Uuid) is used as an identifier.
 #[stable]
-#[deriving(Clone, Eq, PartialEq, Show)]
-pub struct Entity(uint, Uuid);
+#[deriving(Copy, Clone, Eq, Hash, PartialEq, Show)]
+pub struct Entity(uint, Id);
 
 #[stable]
 impl Entity
 {
     pub fn nil() -> Entity
     {
-        Entity(0, Uuid::nil())
+        Entity(0, 0)
     }
 
     /// Returns the entity's index.
@@ -32,7 +33,7 @@ impl Entity
 
     /// Returns the entity's unique identifier.
     #[inline]
-    pub fn get_id(&self) -> Uuid
+    pub fn get_id(&self) -> Id
     {
         self.1.clone()
     }
@@ -89,9 +90,10 @@ impl EntityModifier for () { fn modify(&mut self, _: &mut Components, _: Entity)
 #[doc(hidden)]
 pub struct EntityManager
 {
-    ids: IdPool,
+    indexes: IndexPool,
     entities: Vec<Entity>,
     enabled: Bitv,
+    next_id: Id,
 }
 
 impl EntityManager
@@ -101,9 +103,10 @@ impl EntityManager
     {
         EntityManager
         {
-            ids: IdPool::new(),
+            indexes: IndexPool::new(),
             entities: Vec::new(),
             enabled: Bitv::new(),
+            next_id: 0,
         }
     }
 
@@ -113,23 +116,24 @@ impl EntityManager
         ::std::mem::swap(&mut vec, &mut self.entities);
         vec.retain(|e| self.enabled[**e]);
         self.enabled = Bitv::new();
-        self.ids = IdPool::new();
+        self.indexes = IndexPool::new();
         vec
     }
 
     pub fn count(&self) -> uint
     {
-        self.ids.count()
+        self.indexes.count()
     }
 
     /// Creates a new `Entity`, assigning it the first available identifier.
     pub fn create_entity(&mut self) -> Entity
     {
-        let ret = Entity(self.ids.get_id(), Uuid::new_v4());
+        self.next_id += 1;
+        let ret = Entity(self.indexes.get_id(), self.next_id);
         if *ret >= self.entities.len()
         {
             let diff = *ret - self.entities.len();
-            self.entities.grow(diff+1, Entity(0, Uuid::nil()));
+            self.entities.grow(diff+1, Entity::nil());
         }
         self.entities[*ret] = ret.clone();
 
@@ -152,32 +156,32 @@ impl EntityManager
     /// Deletes an entity from the manager.
     pub fn delete_entity(&mut self, entity: &Entity)
     {
-        self.entities[**entity] = Entity(0, Uuid::nil());
+        self.entities[**entity] = Entity::nil();
         self.enabled.set(**entity, false);
-        self.ids.return_id(**entity);
+        self.indexes.return_id(**entity);
     }
 }
 
-struct IdPool
+struct IndexPool
 {
     recycled: Vec<uint>,
-    next_id: uint,
+    next_index: uint,
 }
 
-impl IdPool
+impl IndexPool
 {
-    pub fn new() -> IdPool
+    pub fn new() -> IndexPool
     {
-        IdPool
+        IndexPool
         {
             recycled: Vec::new(),
-            next_id: 1u,
+            next_index: 1u,
         }
     }
 
     pub fn count(&self) -> uint
     {
-        self.next_id - self.recycled.len()
+        self.next_index - self.recycled.len()
     }
 
     pub fn get_id(&mut self) -> uint
@@ -186,8 +190,8 @@ impl IdPool
         {
             Some(id) => id,
             None => {
-                self.next_id += 1;
-                self.next_id - 1
+                self.next_index += 1;
+                self.next_index - 1
             }
         }
     }

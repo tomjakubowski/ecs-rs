@@ -33,8 +33,6 @@
 
 #![unstable]
 
-extern crate uuid;
-
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
 pub use entity::{Entity, EntityBuilder, EntityModifier};
@@ -59,7 +57,7 @@ mod macros
         ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
         {
             $(
-                #[deriving(Default, PartialEq, Show)]
+                #[deriving(Copy, Default, PartialEq, Show)]
                 pub struct $Name
                 {
                     $(pub $field : $ty),+
@@ -73,7 +71,7 @@ mod macros
         ($($Name:ident;)+) =>
         {
             $(
-                #[deriving(Default, PartialEq, Show)]
+                #[deriving(Copy, Default, PartialEq, Show)]
                 pub struct $Name;
             )+
         };
@@ -84,7 +82,7 @@ mod macros
         ($($Name:ident($Type:ty);)+) =>
         {
             $(
-                #[deriving(Default, PartialEq, Show)]
+                #[deriving(Copy, Default, PartialEq, Show)]
                 pub struct $Name(pub $Type);
 
                 impl Deref<$Type> for $Name
