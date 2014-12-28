@@ -2,7 +2,6 @@
 //! System to specifically deal with interactions between two types of entity.
 
 use std::collections::HashMap;
-use std::default::Default;
 
 use Aspect;
 use EntityData;
@@ -12,19 +11,21 @@ use World;
 
 pub type DataMap<'a, Data> = (&'a Entity, &'a mut Data);
 
-pub trait DataProcess<Data: Default+'static>: System
+pub trait DataProcess<Data: 'static>: System
 {
+    fn init(&self, e: &Entity, w: &World) -> Data;
+
     fn process<'a, T: Iterator<DataMap<'a, Data>>>(&self, T, &mut EntityData);
 }
 
-pub struct DataSystem<Data: Default+'static, T: DataProcess<Data>>
+pub struct DataSystem<Data: 'static, T: DataProcess<Data>>
 {
     interested: HashMap<Entity, Data>,
     aspect: Aspect,
     inner: T,
 }
 
-impl<Data: Default+'static, T: DataProcess<Data>> DataSystem<Data, T>
+impl<Data: 'static, T: DataProcess<Data>> DataSystem<Data, T>
 {
     pub fn new(inner: T, aspect: Aspect) -> DataSystem<Data, T>
     {
@@ -37,7 +38,7 @@ impl<Data: Default+'static, T: DataProcess<Data>> DataSystem<Data, T>
     }
 }
 
-impl<Data: Default+'static, T: DataProcess<Data>> Active for DataSystem<Data, T>
+impl<Data: 'static, T: DataProcess<Data>> Active for DataSystem<Data, T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
@@ -45,13 +46,13 @@ impl<Data: Default+'static, T: DataProcess<Data>> Active for DataSystem<Data, T>
     }
 }
 
-impl<Data: Default+'static, T: DataProcess<Data>> System for DataSystem<Data, T>
+impl<Data: 'static, T: DataProcess<Data>> System for DataSystem<Data, T>
 {
     fn activated(&mut self, entity: &Entity, world: &World)
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(*entity, Default::default());
+            self.interested.insert(*entity, self.inner.init(entity, world));
             self.inner.activated(entity, world);
         }
     }
@@ -72,7 +73,7 @@ impl<Data: Default+'static, T: DataProcess<Data>> System for DataSystem<Data, T>
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(*entity, Default::default());
+            self.interested.insert(*entity, self.inner.init(entity, world));
             self.inner.activated(entity, world);
         }
     }

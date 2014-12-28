@@ -1,7 +1,7 @@
 
 //! Systems to specifically deal with entities.
 
-use std::collections::TrieMap;
+use std::collections::HashSet;
 
 use Aspect;
 use EntityData;
@@ -21,14 +21,14 @@ pub trait PassiveEntityProcess: System
 
 pub struct EntitySystem<T: EntityProcess>
 {
-    interested: TrieMap<Entity>,
+    interested: HashSet<Entity>,
     aspect: Aspect,
     inner: T,
 }
 
 pub struct PassiveEntitySystem<T: PassiveEntityProcess>
 {
-    interested: TrieMap<Entity>,
+    interested: HashSet<Entity>,
     aspect: Aspect,
     inner: T,
 }
@@ -39,7 +39,7 @@ impl<T: EntityProcess> EntitySystem<T>
     {
         EntitySystem
         {
-            interested: TrieMap::new(),
+            interested: HashSet::new(),
             aspect: aspect,
             inner: inner,
         }
@@ -50,7 +50,7 @@ impl<T: EntityProcess> Active for EntitySystem<T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
-        self.inner.process(self.interested.values(), c);
+        self.inner.process(self.interested.iter(), c);
     }
 }
 
@@ -60,14 +60,14 @@ impl<T: EntityProcess> System for EntitySystem<T>
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, entity.clone());
+            self.interested.insert(entity.clone());
             self.inner.activated(entity, world);
         }
     }
 
     fn reactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.contains_key(&**entity)
+        if self.interested.contains(entity)
         {
             if self.aspect.check(entity, world)
             {
@@ -75,26 +75,25 @@ impl<T: EntityProcess> System for EntitySystem<T>
             }
             else
             {
-                self.interested.remove(&**entity);
+                self.interested.remove(entity);
                 self.inner.deactivated(entity, world);
             }
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, entity.clone());
+            self.interested.insert(entity.clone());
             self.inner.activated(entity, world);
         }
     }
 
     fn deactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.remove(&**entity).is_some()
+        if self.interested.remove(entity)
         {
             self.inner.deactivated(entity, world);
         }
     }
 }
-
 
 impl<T: PassiveEntityProcess> PassiveEntitySystem<T>
 {
@@ -102,7 +101,7 @@ impl<T: PassiveEntityProcess> PassiveEntitySystem<T>
     {
         PassiveEntitySystem
         {
-            interested: TrieMap::new(),
+            interested: HashSet::new(),
             aspect: aspect,
             inner: inner,
         }
@@ -113,7 +112,7 @@ impl<T: PassiveEntityProcess> Passive for PassiveEntitySystem<T>
 {
     fn process(&mut self, c: &World)
     {
-        self.inner.process(self.interested.values(), c);
+        self.inner.process(self.interested.iter(), c);
     }
 }
 
@@ -123,14 +122,14 @@ impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, entity.clone());
+            self.interested.insert(entity.clone());
             self.inner.activated(entity, world);
         }
     }
 
     fn reactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.contains_key(&**entity)
+        if self.interested.contains(entity)
         {
             if self.aspect.check(entity, world)
             {
@@ -138,20 +137,20 @@ impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
             }
             else
             {
-                self.interested.remove(&**entity);
+                self.interested.remove(entity);
                 self.inner.deactivated(entity, world);
             }
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity, entity.clone());
+            self.interested.insert(entity.clone());
             self.inner.activated(entity, world);
         }
     }
 
     fn deactivated(&mut self, entity: &Entity, world: &World)
     {
-        if self.interested.remove(&**entity).is_some()
+        if self.interested.remove(entity)
         {
             self.inner.deactivated(entity, world);
         }
