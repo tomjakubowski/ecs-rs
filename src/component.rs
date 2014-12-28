@@ -6,6 +6,7 @@ use std::intrinsics::TypeId;
 use std::mem;
 
 use buffer::Buffer;
+use error;
 use Entity;
 
 pub trait Component: Copy+'static {}
@@ -40,53 +41,14 @@ impl ComponentList
         self.enabled = Bitv::new();
     }
 
-    pub fn add<T:Component>(&mut self, entity: &Entity, component: &T) -> bool
-    {
-        if **entity < self.enabled.len() && self.enabled.get(**entity)
-        {
-            false
-        }
-        else if TypeId::of::<T>().hash() != self.id
-        {
-            false
-        }
-        else
-        {
-            unsafe { self.buffer.set(**entity, component); }
-            if **entity >= self.enabled.len()
-            {
-                let diff = **entity - self.enabled.len();
-                self.enabled.grow(diff+1, false);
-            }
-            self.enabled.set(**entity, true);
-            true
-        }
-    }
-
-    pub fn set<T:Component>(&mut self, entity: &Entity, component: &T) -> bool
-    {
-        if **entity >= self.enabled.len() || !self.enabled.get(**entity)
-        {
-            false
-        }
-        else if TypeId::of::<T>().hash() != self.id
-        {
-            false
-        }
-        else
-        {
-            unsafe { self.buffer.set(**entity, component); }
-            true
-        }
-    }
-
-    pub fn add_or_set<T:Component>(&mut self, entity: &Entity, component: &T) -> bool
+    pub fn add<T:Component>(&mut self, entity: &Entity, component: &T)
     {
         if TypeId::of::<T>().hash() != self.id
         {
-            false
+            return error("Invalid Component for ComponentList");
         }
-        else
+
+        if !self.has(entity)
         {
             unsafe { self.buffer.set(**entity, component); }
             if **entity >= self.enabled.len()
@@ -95,18 +57,44 @@ impl ComponentList
                 self.enabled.grow(diff+1, false);
             }
             self.enabled.set(**entity, true);
-            true
+        }
+        else
+        {
+            error("Cannot add component: Component already exists");
+        }
+    }
+
+    pub fn set<T:Component>(&mut self, entity: &Entity, component: &T)
+    {
+        if TypeId::of::<T>().hash() != self.id
+        {
+            return error("Invalid Component for ComponentList");
+        }
+
+        if self.has(entity)
+        {
+            unsafe { self.buffer.set(**entity, component); }
+        }
+        else
+        {
+            error("Cannot set component: Component does not exist");
         }
     }
 
     pub fn has(&self, entity: &Entity) -> bool
     {
-        **entity < self.enabled.len() && self.enabled.get(**entity)
+        self.enabled.get(**entity).unwrap_or(false)
     }
 
     pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
-        if **entity < self.enabled.len() && self.enabled.get(**entity)
+        if TypeId::of::<T>().hash() != self.id
+        {
+            error("Invalid Component for ComponentList");
+            return None
+        }
+
+        if self.has(entity)
         {
             unsafe { self.buffer.get::<T>(**entity) }
         }
@@ -116,9 +104,15 @@ impl ComponentList
         }
     }
 
-    pub fn borrow<T:Component>(&self, entity: &Entity) -> Option<&T>
+    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
     {
-        if **entity < self.enabled.len() && self.enabled.get(**entity)
+        if TypeId::of::<T>().hash() != self.id
+        {
+            error("Invalid Component for ComponentList");
+            return None
+        }
+
+        if self.has(entity)
         {
             unsafe { self.buffer.borrow::<T>(**entity) }
         }
@@ -128,28 +122,15 @@ impl ComponentList
         }
     }
 
-    pub fn borrow_mut<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    pub fn remove(&mut self, entity: &Entity)
     {
-        if **entity < self.enabled.len() && self.enabled.get(**entity)
-        {
-            unsafe { self.buffer.borrow_mut::<T>(**entity) }
-        }
-        else
-        {
-            None
-        }
-    }
-
-    pub fn rm(&mut self, entity: &Entity) -> bool
-    {
-        if **entity < self.enabled.len() && self.enabled.get(**entity)
+        if self.has(entity)
         {
             self.enabled.set(**entity, false);
-            true
         }
         else
         {
-            false
+            error("Cannot remove component: Component does not exist");
         }
     }
 

@@ -71,30 +71,7 @@ impl Buffer
         }
     }
 
-    pub unsafe fn borrow<T: Copy+'static>(&self, index: uint) -> Option<&T>
-    {
-        if mem::size_of::<T>() != self.stride
-        {
-            panic!("Type has invalid size for buffer")
-        }
-        let offset = self.stride * index;
-        if offset >= self.bytes.len()
-        {
-            None
-        }
-        else
-        {
-            let _slice = self.bytes.slice(offset, offset + self.stride);
-            let oslice: &[T] = mem::transmute(Slice
-            {
-                data: _slice.as_ptr() as *const T,
-                len: self.stride,
-            });
-            Some(&oslice[0])
-        }
-    }
-
-    pub unsafe fn borrow_mut<T: Copy+'static>(&mut self, index: uint) -> Option<&mut T>
+    pub unsafe fn borrow<T: Copy+'static>(&mut self, index: uint) -> Option<&mut T>
     {
         if mem::size_of::<T>() != self.stride
         {

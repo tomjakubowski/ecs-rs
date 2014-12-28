@@ -386,31 +386,25 @@ impl ComponentManager
     {
         for (_, list) in self.components.iter()
         {
-            list.borrow_mut().rm(entity);
+            list.borrow_mut().remove(entity);
         }
     }
 
-    fn add<T:Component>(&self, entity: &Entity, component: T) -> bool
+    fn add<T:Component>(&self, entity: &Entity, component: T)
     {
         match self.components.get(&TypeId::of::<T>().hash())
         {
             Some(entry) => entry.borrow_mut().add::<T>(entity, &component),
-            None => {
-                error("Attempted to add an unregistered component");
-                false
-            }
+            None => error("Attempted to add an unregistered component"),
         }
     }
 
-    fn set<T:Component>(&self, entity: &Entity, component: T) -> bool
+    fn set<T:Component>(&self, entity: &Entity, component: T)
     {
         match self.components.get(&TypeId::of::<T>().hash())
         {
             Some(entry) => entry.borrow_mut().set::<T>(entity, &component),
-            None => {
-                error("Attempted to modify an unregistered component");
-                false
-            }
+            None => error("Attempted to set an unregistered component"),
         }
     }
 
@@ -443,7 +437,7 @@ impl ComponentManager
         match self.components.get(&TypeId::of::<T>().hash())
         {
             Some(entry) => {
-                if let Some(c) = entry.borrow_mut().borrow_mut::<T>(entity)
+                if let Some(c) = entry.borrow_mut().borrow::<T>(entity)
                 {
                     call(c);
                 }
@@ -461,7 +455,7 @@ impl ComponentManager
         match self.components.get(&TypeId::of::<T>().hash())
         {
             Some(entry) => {
-                if let Some(c) = entry.borrow_mut().borrow_mut::<T>(entity)
+                if let Some(c) = entry.borrow_mut().borrow::<T>(entity)
                 {
                     call(c);
                     true
@@ -479,15 +473,12 @@ impl ComponentManager
         }
     }
 
-    fn remove<T:Component>(&self, entity: &Entity) -> bool
+    fn remove<T:Component>(&self, entity: &Entity)
     {
         match self.components.get(&TypeId::of::<T>().hash())
         {
-            Some(entry) => entry.borrow_mut().rm(entity),
-            None => {
-                error("Attempted to remove an unregistered component");
-                false
-            }
+            Some(entry) => entry.borrow_mut().remove(entity),
+            None => error("Attempted to remove an unregistered component"),
         }
     }
 }
@@ -495,12 +486,12 @@ impl ComponentManager
 #[experimental]
 impl<'a> Components<'a>
 {
-    pub fn add<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    pub fn add<T:Component>(&mut self, entity: &Entity, component: T)
     {
         self.inner.add::<T>(entity, component)
     }
 
-    pub fn set<T:Component>(&mut self, entity: &Entity, component: T) -> bool
+    pub fn set<T:Component>(&mut self, entity: &Entity, component: T)
     {
         self.inner.set::<T>(entity, component)
     }
@@ -515,7 +506,7 @@ impl<'a> Components<'a>
         self.inner.has(entity, id)
     }
 
-    pub fn remove<T:Component>(&mut self, entity: &Entity) -> bool
+    pub fn remove<T:Component>(&mut self, entity: &Entity)
     {
         self.inner.remove::<T>(entity)
     }
@@ -534,7 +525,12 @@ impl<'a> EntityData<'a>
         self.inner.with::<T>(entity, call)
     }
 
-    pub fn set<T:Component>(&self, entity: &Entity, component: T) -> bool
+    pub fn add<T:Component>(&self, entity: &Entity, component: T)
+    {
+        self.inner.add::<T>(entity, component)
+    }
+
+    pub fn set<T:Component>(&self, entity: &Entity, component: T)
     {
         self.inner.set::<T>(entity, component)
     }
