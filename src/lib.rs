@@ -101,7 +101,7 @@ mod macros
     macro_rules! component_id {
         ($ty:ty) =>
         {
-            ::std::intrinsics::TypeId::of::<$ty>().hash()
+            ::std::intrinsics::TypeId::of::<$ty>()
         };
     }
 
@@ -109,7 +109,7 @@ mod macros
     macro_rules! component_ids {
         ($($ty:ty),+) =>
         {
-            vec![$(::std::intrinsics::TypeId::of::<$ty>().hash(),)+]
+            vec![$(::std::intrinsics::TypeId::of::<$ty>(),)+]
         };
     }
 }

@@ -9,9 +9,11 @@ use Entity;
 use {Active, Passive, System};
 use World;
 
+use super::EntityIter;
+
 pub trait InteractProcess: System
 {
-    fn process<'a, T: Iterator<&'a Entity>>(&self, T, T, &mut EntityData);
+    fn process<'a>(&self, EntityIter<'a>, EntityIter<'a>, &mut EntityData);
 }
 
 pub struct InteractSystem<T: InteractProcess>
@@ -42,7 +44,7 @@ impl<T: InteractProcess> Active for InteractSystem<T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
-        self.inner.process(self.interested_a.iter(), self.interested_b.iter(), c);
+        self.inner.process(EntityIter::new(self.interested_a.iter()), EntityIter::new(self.interested_b.iter()), c);
     }
 }
 

@@ -14,6 +14,17 @@ pub struct EntityIter<'a>
     inner: Iter<'a, Entity>,
 }
 
+impl<'a> EntityIter<'a>
+{
+    pub fn new(iter: Iter<'a, Entity>) -> EntityIter<'a>
+    {
+        EntityIter
+        {
+            inner: iter,
+        }
+    }
+}
+
 impl<'a> Deref<Iter<'a, Entity>> for EntityIter<'a>
 {
     fn deref(&self) -> &Iter<'a, Entity>
@@ -71,7 +82,7 @@ impl<T: EntityProcess> Active for EntitySystem<T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
-        self.inner.process(EntityIter { inner: self.interested.iter() }, c);
+        self.inner.process(EntityIter::new(self.interested.iter()), c);
     }
 }
 
