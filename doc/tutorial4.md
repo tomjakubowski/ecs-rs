@@ -38,7 +38,7 @@ The `EntityProcess` trait looks like the following:
 pub trait EntityProcess: System
 {
     // This method is called each update cycle with an iterator of entities that fulfill the requirements.
-    fn process<'a, T: Iterator<&'a Entity>>(&self, T, &mut EntityData);
+    fn process(&self, EntityIter, &mut EntityData);
 }
 ```
 The only method you need to implement is `process()`, but if you need some
@@ -51,7 +51,7 @@ pub struct PrintEntityID;
 
 impl EntityProcess for PrintEntityID
 {
-    fn process<'a, T: Iterator<&'a Entity>>(&self, mut entities: T, _: &mut EntityData)
+    fn process(&self, mut entities: EntityIter, _: &mut EntityData)
     {
         for entity in entities
         {
@@ -60,7 +60,7 @@ impl EntityProcess for PrintEntityID
     }
 }
 
-impl System for PrintEntityID {}// Empty implementation, but there are some methods that may be overriden.
+impl System for PrintEntityID {} // Empty implementation, but there are some methods that may be overriden.
 ```
 Of course, this is not a system by itself, and so cannot be registered to the
 world. We need to use this `EntityProcess` to construct an `EntitySystem`.

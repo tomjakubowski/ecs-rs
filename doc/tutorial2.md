@@ -76,12 +76,12 @@ world.modify_entity(entity, ());
 ## Removal
 
 When you are finished with an entity (eg: when it has died), call
-`World.delete_entity()` to free its index and remove it from any systems or
+`World.remove_entity()` to free its index and remove it from any systems or
 managers.
 ```rust
-world.delete_entity(&entity);
+world.remove_entity(&entity);
 ```
-You can check the entity was deleted with `!World.is_valid()`:
+You can check the entity was removed with `!World.is_valid()`:
 ```rust
 assert!(!world.is_valid(&entity));
 ```

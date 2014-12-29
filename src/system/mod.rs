@@ -1,18 +1,20 @@
 
 //! Types to process the world and entities.
 
-pub use self::datasystem::{DataMap, DataSystem, DataProcess};
-pub use self::entitysystem::{EntitySystem, EntityProcess};
-pub use self::entitysystem::{PassiveEntitySystem, PassiveEntityProcess};
-pub use self::interactsystem::{InteractSystem, InteractProcess};
+pub use self::data::{DataIter, DataSystem, DataProcess};
+pub use self::entity::{EntityIter, EntitySystem, EntityProcess};
+pub use self::entity::{PassiveEntitySystem, PassiveEntityProcess};
+pub use self::interact::{InteractSystem, InteractProcess};
+pub use self::interval::{IntervalSystem};
 
 use EntityData;
 use Entity;
 use World;
 
-pub mod datasystem;
-pub mod entitysystem;
-pub mod interactsystem;
+pub mod data;
+pub mod entity;
+pub mod interact;
+pub mod interval;
 
 /// Generic base system type.
 pub trait System: 'static
@@ -51,57 +53,4 @@ pub trait Passive: System
 {
     /// Process the world.
     fn process(&mut self, &World);
-}
-
-/// System which operates every certain number of updates.
-pub struct IntervalSystem<T: Active>
-{
-    interval: u8,
-    ticker: u8,
-    inner: T,
-}
-
-impl<T: Active> IntervalSystem<T>
-{
-    /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: T, interval: u8) -> IntervalSystem<T>
-    {
-        IntervalSystem
-        {
-            interval: interval,
-            ticker: 0,
-            inner: system,
-        }
-    }
-}
-
-impl<T: Active> Active for IntervalSystem<T>
-{
-    fn process(&mut self, c: &mut EntityData)
-    {
-        self.ticker += 1;
-        if self.ticker == self.interval
-        {
-            self.ticker = 0;
-            self.inner.process(c);
-        }
-    }
-}
-
-impl<T: Active> System for IntervalSystem<T>
-{
-    fn activated(&mut self, e: &Entity, w: &World)
-    {
-        self.inner.activated(e, w);
-    }
-
-    fn reactivated(&mut self, e: &Entity, w: &World)
-    {
-        self.inner.reactivated(e, w);
-    }
-
-    fn deactivated(&mut self, e: &Entity, w: &World)
-    {
-        self.inner.deactivated(e, w);
-    }
 }

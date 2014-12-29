@@ -1,7 +1,7 @@
 
 //! Systems to specifically deal with entities.
 
-use std::collections::HashSet;
+use std::collections::hash_set::{HashSet, Iter};
 
 use Aspect;
 use EntityData;
@@ -9,14 +9,35 @@ use Entity;
 use {Active, Passive, System};
 use World;
 
+pub struct EntityIter<'a>
+{
+    inner: Iter<'a, Entity>,
+}
+
+impl<'a> Deref<Iter<'a, Entity>> for EntityIter<'a>
+{
+    fn deref(&self) -> &Iter<'a, Entity>
+    {
+        &self.inner
+    }
+}
+
+impl<'a> Iterator<&'a Entity> for EntityIter<'a>
+{
+    fn next(&mut self) -> Option<&'a Entity>
+    {
+        self.inner.next()
+    }
+}
+
 pub trait EntityProcess: System
 {
-    fn process<'a, T: Iterator<&'a Entity>>(&self, T, &mut EntityData);
+    fn process<'a>(&self, EntityIter<'a>, &mut EntityData);
 }
 
 pub trait PassiveEntityProcess: System
 {
-    fn process<'a, T: Iterator<&'a Entity>>(&mut self, T, &World);
+    fn process<'a>(&mut self, EntityIter<'a>, &World);
 }
 
 pub struct EntitySystem<T: EntityProcess>
@@ -50,7 +71,7 @@ impl<T: EntityProcess> Active for EntitySystem<T>
 {
     fn process(&mut self, c: &mut EntityData)
     {
-        self.inner.process(self.interested.iter(), c);
+        self.inner.process(EntityIter { inner: self.interested.iter() }, c);
     }
 }
 
@@ -112,7 +133,7 @@ impl<T: PassiveEntityProcess> Passive for PassiveEntitySystem<T>
 {
     fn process(&mut self, c: &World)
     {
-        self.inner.process(self.interested.iter(), c);
+        self.inner.process(EntityIter { inner: self.interested.iter() }, c);
     }
 }
 

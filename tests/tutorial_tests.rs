@@ -4,7 +4,7 @@
 #![deny(warnings)]
 //#![forbid(warnings)]
 
-#![feature(if_let, phase)]
+#![feature(phase)]
 
 #[phase(plugin, link)]
 extern crate ecs;
@@ -41,14 +41,14 @@ fn tutorial2()
 
     world.modify_entity(entity, ());
 
-    world.delete_entity(&entity);
+    world.remove_entity(&entity);
     assert!(!world.is_valid(&entity));
 
     let entity2 = world.build_entity(());
 
     // Check that indexes are reassigned properly.
     assert_eq!(*entity, *entity2);
-    // Check that uuids are different.
+    // Check that unique ids are different.
     assert!(entity.get_id() != entity2.get_id());
 }
 
@@ -107,12 +107,8 @@ mod tutorial3
         assert!(world.has_component(&entity, position_id));
         assert!(world.has_component(&entity, velocity_id));
 
-        assert!(world.get_component::<CanFly>(&entity).is_none());
-        if let Some(pos) = world.get_component::<Position>(&entity) {
-            assert_eq!(pos, Position { x: 5.0, y: 2.0 });
-        } else {
-            panic!("No Position Component")
-        }
+        assert_eq!(world.get_component::<Position>(&entity), Position { x: 5.0, y: 2.0 });
+        assert!(world.try_component::<CanFly>(&entity).is_none());
 
         world.modify_entity(entity,
             |c: &mut Components, e: Entity| {
@@ -121,7 +117,7 @@ mod tutorial3
                 c.remove::<Velocity>(&e);
             }
         );
-        assert_eq!(Team(2), world.get_component(&entity).unwrap());
+        assert_eq!(Team(2), world.get_component(&entity));
         assert!(!world.has_component(&entity, velocity_id));
         assert!(world.has_component(&entity, component_id!(CanFly)));
     }
@@ -129,14 +125,14 @@ mod tutorial3
 
 mod tutorial4
 {
-    use ecs::{Aspect, Entity, EntityData, System, WorldBuilder};
-    use ecs::system::{EntityProcess, EntitySystem};
+    use ecs::{Aspect, EntityData, System, WorldBuilder};
+    use ecs::system::{EntityIter, EntityProcess, EntitySystem};
 
     pub struct PrintEntityID;
 
     impl EntityProcess for PrintEntityID
     {
-        fn process<'a, T: Iterator<&'a Entity>>(&self, mut entities: T, _: &mut EntityData)
+        fn process(&self, mut entities: EntityIter, _: &mut EntityData)
         {
             for entity in entities
             {

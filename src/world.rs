@@ -26,6 +26,7 @@ pub struct World
     managers: HashMap<&'static str, RefCell<Box<Manager>>>,
 }
 
+#[stable]
 pub struct WorldBuilder
 {
     world: World,
@@ -35,6 +36,7 @@ pub struct WorldBuilder
 pub struct Components<'a>
 {
     inner: &'a ComponentManager,
+    world: &'a World,
 }
 
 #[experimental]
@@ -58,12 +60,14 @@ struct SystemManager
 impl World
 {
     /// Returns if an entity is valid (registered with the entity manager).
+    #[stable]
     #[inline]
     pub fn is_valid(&self, entity: &Entity) -> bool
     {
         self.entities.borrow().is_valid(entity)
     }
 
+    #[stable]
     pub fn entity_count(&self) -> uint
     {
         self.entities.borrow().count()
@@ -119,7 +123,7 @@ impl World
         mem::swap(&mut queue, &mut *self.remove_queue.borrow_mut());
         for entity in queue.into_iter()
         {
-            self.delete_entity(&entity);
+            self.remove_entity(&entity);
         }
     }
 
@@ -145,6 +149,27 @@ impl World
         self.reactivate_entity(&entity);
     }
 
+    /// Removes an entity, deactivating it if it is activated
+    ///
+    /// If the entity is invalid a warning is issued and this method does nothing.
+    pub fn remove_entity(&mut self, entity: &Entity)
+    {
+        if self.is_valid(entity)
+        {
+            self.systems.borrow_mut().deactivated(entity, self);
+            for ref manager in self.managers.values()
+            {
+                manager.borrow_mut().deactivated(entity, self);
+            }
+            self.components.delete_entity(entity);
+            self.entities.borrow_mut().delete_entity(entity);
+        }
+        else
+        {
+            error("Cannot remove invalid entity")
+        }
+    }
+
     /// Queues a entity to be built at the end of the next update cycle.
     pub fn queue_builder<T: EntityBuilder>(&self, builder: T) -> Entity
     {
@@ -165,68 +190,51 @@ impl World
         self.remove_queue.borrow_mut().push(entity);
     }
 
-    /// Deletes an entity, deactivating it if it is activated
-    ///
-    /// If the entity is invalid a warning is issued and this method does nothing.
-    pub fn delete_entity(&mut self, entity: &Entity)
-    {
-        if self.is_valid(entity)
-        {
-            self.systems.borrow_mut().deactivated(entity, self);
-            for ref manager in self.managers.values()
-            {
-                manager.borrow_mut().deactivated(entity, self);
-            }
-            self.components.delete_entity(entity);
-            self.entities.borrow_mut().delete_entity(entity);
-        }
-        else
-        {
-            error("Cannot delete invalid entity")
-        }
-    }
-
-    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> Option<U>
+    /// Calls a function with an immutable reference to the requested manager
+    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
     {
         match self.managers.get(&key)
         {
             Some(any) => match any.borrow().as_any().downcast_ref::<T>() {
-                Some(manager) => Some(call(manager)),
-                None => {
-                    error("Could not downcast manager");
-                    None
-                    },
-                },
-            None => {
-                error(format!("Could not find any manager for key '{}'", key).as_slice());
-                None
+                Some(manager) => call(manager),
+                None => error("Tried to downcast manager to wrong type")
             },
+            None => error(format!("Could not find any manager for key '{}'", key).as_slice())
         }
     }
 
-    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> Option<U>
+    /// Calls a function with a mutable reference to the requested manager
+    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
     {
         match self.managers.get(&key)
         {
-            Some(any) => {
-                match any.borrow_mut().as_any_mut().downcast_mut::<T>()
-                {
-                    Some(manager) => Some(call(manager)),
-                    None => {
-                        error("Could not downcast manager");
-                        None
-                    },
-                }
+            Some(any) => match any.borrow_mut().as_any_mut().downcast_mut::<T>() {
+                Some(manager) => call(manager),
+                None => error("Could not downcast manager")
             },
-            None => {
-                error(format!("Could not find any manager for key '{}'", key).as_slice());
-                None
-            },
+            None => error(format!("Could not find any manager for key '{}'", key).as_slice())
         }
     }
 
-    /// Returns the value of a component for an entity (or None)
-    pub fn get_component<T: Component>(&self, entity: &Entity) -> Option<T>
+    /// Sets the value of a component for an entity
+    ///
+    /// Fails if the component does not exist or the entity is invalid
+    pub fn set_component<T: Component>(&self, entity: &Entity, val: T)
+    {
+        if self.is_valid(entity)
+        {
+            self.components.set::<T>(entity, val)
+        }
+        else
+        {
+            error("Cannot set component for invalid entity")
+        }
+    }
+
+    /// Returns the value of a component for an entity
+    ///
+    /// Fails if the component does not exist or the entity is invalid
+    pub fn get_component<T: Component>(&self, entity: &Entity) -> T
     {
         if self.is_valid(entity)
         {
@@ -234,11 +242,58 @@ impl World
         }
         else
         {
-            None
+            error("Cannot get component for invalid entity")
         }
     }
 
-    /// Returns if an entity contains a component.
+    /// Returns the value of a component for an entity (or None)
+    ///
+    /// Fails if the entity is invalid
+    pub fn try_component<T: Component>(&self, entity: &Entity) -> Option<T>
+    {
+        if self.is_valid(entity)
+        {
+            self.components.try_get::<T>(entity)
+        }
+        else
+        {
+            error("Cannot get component for invalid entity")
+        }
+    }
+
+    /// Calls a function with a mutable reference to a component and returns the result or None
+    /// if the component does not exist.
+    ///
+    /// Panics if the entity is invalid.
+    pub fn try_with_component<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
+    {
+        if self.is_valid(entity)
+        {
+            self.components.try_with::<T, U>(entity, call)
+        }
+        else
+        {
+            error("Cannot modify component for invalid entity")
+        }
+    }
+
+    /// Calls a function with a mutable reference to a component and returns the result.
+    ///
+    /// Panics if the component does not exist or the entity is invalid.
+    pub fn with_component<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
+    {
+        if self.is_valid(entity)
+        {
+            self.components.with::<T, U>(entity, call)
+        }
+        else
+        {
+            error("Cannot modify component for invalid entity")
+        }
+    }
+
+
+    /// Returns whether an entity has a component.
     pub fn has_component(&self, entity: &Entity, id: ComponentId) -> bool
     {
         self.components.has(entity, id)
@@ -275,14 +330,15 @@ impl World
     {
         Components
         {
-            inner: &self.components
+            inner: &self.components,
+            world: self,
         }
     }
 }
 
 impl SystemManager
 {
-    pub fn new() -> SystemManager
+    fn new() -> SystemManager
     {
         SystemManager
         {
@@ -291,17 +347,17 @@ impl SystemManager
         }
     }
 
-    pub fn register(&mut self, sys: Box<Active>)
+    fn register(&mut self, sys: Box<Active>)
     {
         self.systems.push(sys);
     }
 
-    pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
+    fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
     {
         self.passive.insert(key, sys);
     }
 
-    pub fn process(&mut self, mut components: EntityData)
+    fn process(&mut self, mut components: EntityData)
     {
         for sys in self.systems.iter_mut()
         {
@@ -309,7 +365,7 @@ impl SystemManager
         }
     }
 
-    pub fn update_passive(&mut self, key: &'static str, world: &World)
+    fn update_passive(&mut self, key: &'static str, world: &World)
     {
         if self.passive.contains_key(&key)
         {
@@ -392,7 +448,7 @@ impl ComponentManager
 
     fn add<T:Component>(&self, entity: &Entity, component: T)
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
             Some(entry) => entry.borrow_mut().add::<T>(entity, &component),
             None => error("Attempted to add an unregistered component"),
@@ -401,81 +457,61 @@ impl ComponentManager
 
     fn set<T:Component>(&self, entity: &Entity, component: T)
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
             Some(entry) => entry.borrow_mut().set::<T>(entity, &component),
             None => error("Attempted to set an unregistered component"),
         }
     }
 
-    fn get<T:Component>(&self, entity: &Entity) -> Option<T>
+    fn get<T:Component>(&self, entity: &Entity) -> T
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
             Some(entry) => entry.borrow().get::<T>(entity),
-            None => {
-                error("Attempted to access an unregistered component");
-                None
-            }
+            None => error("Attempted to access an unregistered component"),
         }
     }
 
-    pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
+    fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
+    {
+        match self.components.get(&TypeId::of::<T>())
+        {
+            Some(entry) => entry.borrow().try_get::<T>(entity),
+            None => error("Attempted to access an unregistered component"),
+        }
+    }
+
+    fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
         match self.components.get(&id)
         {
             Some(entry) => entry.borrow().has(entity),
-            None => {
-                error("Attempted to access an unregistered component");
-                false
-            }
+            None => error("Attempted to access an unregistered component"),
         }
     }
 
-    fn try_with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
+    fn try_with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
-            Some(entry) => {
-                if let Some(c) = entry.borrow_mut().borrow::<T>(entity)
-                {
-                    call(c);
-                }
-                true
-            },
-            None => {
-                error("Attempted to access an unregistered component");
-                false
-            }
+            Some(entry) => entry.borrow_mut().try_borrow::<T>(entity).map(|c| call(c)),
+            None => error("Attempted to access an unregistered component"),
         }
     }
 
-    fn with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
+    fn with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
-            Some(entry) => {
-                if let Some(c) = entry.borrow_mut().borrow::<T>(entity)
-                {
-                    call(c);
-                    true
-                }
-                else
-                {
-                    error("Unable to access component for entity");
-                    false
-                }
-            },
-            None => {
-                error("Attempted to access an unregistered component");
-                false
-            }
+            Some(entry) => call(entry.borrow_mut().borrow::<T>(entity)),
+            None => error("Attempted to access an unregistered component"),
         }
     }
 
     fn remove<T:Component>(&self, entity: &Entity)
     {
-        match self.components.get(&TypeId::of::<T>().hash())
+        match self.components.get(&TypeId::of::<T>())
         {
             Some(entry) => entry.borrow_mut().remove(entity),
             None => error("Attempted to remove an unregistered component"),
@@ -486,60 +522,114 @@ impl ComponentManager
 #[experimental]
 impl<'a> Components<'a>
 {
+    /// Adds a component to an entity.
     pub fn add<T:Component>(&mut self, entity: &Entity, component: T)
     {
         self.inner.add::<T>(entity, component)
     }
 
+    /// Sets an entity's component.
     pub fn set<T:Component>(&mut self, entity: &Entity, component: T)
     {
         self.inner.set::<T>(entity, component)
     }
 
-    pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
+    /// Returns an entity's component.
+    ///
+    /// Fails if the component doesn't exist.
+    pub fn get<T:Component>(&self, entity: &Entity) -> T
     {
         self.inner.get::<T>(entity)
     }
 
+    /// Returns an entity's component or None if it can't be found.
+    pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
+    {
+        self.inner.try_get::<T>(entity)
+    }
+
+    /// Check if an entity has a component
     pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
         self.inner.has(entity, id)
     }
 
+    /// Remove a component from an entity
     pub fn remove<T:Component>(&mut self, entity: &Entity)
     {
         self.inner.remove::<T>(entity)
+    }
+
+    /// Queues a entity to be built at the end of the next update cycle.
+    pub fn build_entity<T: EntityBuilder>(&self, builder: T) -> Entity
+    {
+        self.world.queue_builder(builder)
+    }
+
+    /// Queues a entity to be modified at the end of the next update cycle.
+    pub fn modify_entity<T: EntityModifier>(&self, entity: Entity, modifier: T)
+    {
+        self.world.queue_modifier(entity, modifier)
+    }
+
+    /// Queues a entity to be removed at the end of the next update cycle.
+    pub fn remove_entity(&self, entity: Entity)
+    {
+        self.world.queue_removal(entity)
+    }
+
+    /// Calls a function with an immutable reference to the requested manager
+    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
+    {
+        self.world.with_manager(key, call)
+    }
+
+    /// Calls a function with an mutable reference to the requested manager
+    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
+    {
+        self.world.with_manager_mut(key, call)
     }
 }
 
 #[experimental]
 impl<'a> EntityData<'a>
 {
-    pub fn try_with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
+    /// Calls a function with a mutable reference to a component and returns the result or None
+    /// if the component does not exist.
+    pub fn try_with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
     {
-        self.inner.try_with::<T>(entity, call)
+        self.inner.try_with::<T, U>(entity, call)
     }
 
-    pub fn with<T:Component>(&self, entity: &Entity, call: |&mut T|) -> bool
+    /// Calls a function with a mutable reference to a component and returns the result.
+    ///
+    /// Panics if the component does not exist.
+    pub fn with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
     {
-        self.inner.with::<T>(entity, call)
+        self.inner.with::<T, U>(entity, call)
     }
 
-    pub fn add<T:Component>(&self, entity: &Entity, component: T)
-    {
-        self.inner.add::<T>(entity, component)
-    }
-
+    /// Sets an entity's component.
     pub fn set<T:Component>(&self, entity: &Entity, component: T)
     {
         self.inner.set::<T>(entity, component)
     }
 
-    pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
+    /// Returns an entity's component.
+    ///
+    /// Fails if the component doesn't exist.
+    pub fn get<T:Component>(&self, entity: &Entity) -> T
     {
         self.inner.get::<T>(entity)
     }
 
+    /// Returns an entity's component or None if it can't be found.
+    pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
+    {
+        self.inner.try_get::<T>(entity)
+    }
+
+    /// Check if an entity has a component
     pub fn has(&self, entity: &Entity, id: ComponentId) -> bool
     {
         self.inner.has(entity, id)
@@ -563,20 +653,24 @@ impl<'a> EntityData<'a>
         self.world.queue_removal(entity)
     }
 
-    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> Option<U>
+    /// Calls a function with an immutable reference to the requested manager
+    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
     {
         self.world.with_manager(key, call)
     }
 
-    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> Option<U>
+    /// Calls a function with an mutable reference to the requested manager
+    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
     {
         self.world.with_manager_mut(key, call)
     }
 }
 
+#[stable]
 impl WorldBuilder
 {
     /// Create a new world builder.
+    #[stable]
     pub fn new() -> WorldBuilder
     {
         WorldBuilder {
@@ -593,30 +687,35 @@ impl WorldBuilder
     }
 
     /// Completes the world setup and return the World object for use.
+    #[stable]
     pub fn build(self) -> World
     {
         self.world
     }
 
     /// Registers a manager.
+    #[stable]
     pub fn register_manager(&mut self, key: &'static str, manager: Box<Manager>)
     {
         self.world.managers.insert(key, RefCell::new(manager));
     }
 
     /// Registers a component.
+    #[stable]
     pub fn register_component<T: Component>(&mut self)
     {
         self.world.components.register(ComponentList::new::<T>());
     }
 
     /// Registers a system.
+    #[stable]
     pub fn register_system(&mut self, sys: Box<Active>)
     {
         self.world.systems.borrow_mut().register(sys);
     }
 
     /// Registers a passive system.
+    #[stable]
     pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
     {
         self.world.systems.borrow_mut().register_passive(key, sys);

@@ -48,7 +48,7 @@ impl Buffer
         ptr::copy_memory(dst, src, self.stride);
     }
 
-    pub unsafe fn get<T: Copy+'static>(&self, index: uint) -> Option<T>
+    pub unsafe fn get<T: Copy+'static>(&self, index: uint) -> T
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -57,7 +57,7 @@ impl Buffer
         let offset = self.stride * index;
         if offset >= self.bytes.len()
         {
-            None
+            panic!("Index Out of Bounds")
         }
         else
         {
@@ -67,11 +67,11 @@ impl Buffer
                 data: _slice.as_ptr() as *const T,
                 len: self.stride,
             });
-            Some(oslice[0])
+            oslice[0]
         }
     }
 
-    pub unsafe fn borrow<T: Copy+'static>(&mut self, index: uint) -> Option<&mut T>
+    pub unsafe fn borrow<T: Copy+'static>(&mut self, index: uint) -> &mut T
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -80,7 +80,7 @@ impl Buffer
         let offset = self.stride * index;
         if offset >= self.bytes.len()
         {
-            None
+            panic!("Index Out of Bounds")
         }
         else
         {
@@ -90,7 +90,7 @@ impl Buffer
                 data: _slice.as_ptr() as *const T,
                 len: self.stride,
             });
-            Some(&mut oslice[0])
+            &mut oslice[0]
         }
     }
 

@@ -9,11 +9,13 @@ use buffer::Buffer;
 use error;
 use Entity;
 
+#[stable]
 pub trait Component: Copy+'static {}
 
+#[stable]
 impl<T:Copy+'static> Component for T {}
 
-pub type ComponentId = u64;
+pub type ComponentId = TypeId;
 
 #[doc(hidden)]
 pub struct ComponentList
@@ -31,7 +33,7 @@ impl ComponentList
         {
             buffer: Buffer::new(mem::size_of::<T>()),
             enabled: Bitv::new(),
-            id: TypeId::of::<T>().hash(),
+            id: TypeId::of::<T>(),
         }
     }
 
@@ -43,9 +45,9 @@ impl ComponentList
 
     pub fn add<T:Component>(&mut self, entity: &Entity, component: &T)
     {
-        if TypeId::of::<T>().hash() != self.id
+        if TypeId::of::<T>() != self.id
         {
-            return error("Invalid Component for ComponentList");
+            error("Invalid Component for ComponentList")
         }
 
         if !self.has(entity)
@@ -60,15 +62,15 @@ impl ComponentList
         }
         else
         {
-            error("Cannot add component: Component already exists");
+            error("Cannot add component: Component already exists")
         }
     }
 
     pub fn set<T:Component>(&mut self, entity: &Entity, component: &T)
     {
-        if TypeId::of::<T>().hash() != self.id
+        if TypeId::of::<T>() != self.id
         {
-            return error("Invalid Component for ComponentList");
+            error("Invalid Component for ComponentList")
         }
 
         if self.has(entity)
@@ -77,7 +79,7 @@ impl ComponentList
         }
         else
         {
-            error("Cannot set component: Component does not exist");
+            error("Cannot set component: Component does not exist")
         }
     }
 
@@ -86,12 +88,11 @@ impl ComponentList
         self.enabled.get(**entity).unwrap_or(false)
     }
 
-    pub fn get<T:Component>(&self, entity: &Entity) -> Option<T>
+    pub fn get<T:Component>(&self, entity: &Entity) -> T
     {
-        if TypeId::of::<T>().hash() != self.id
+        if TypeId::of::<T>() != self.id
         {
-            error("Invalid Component for ComponentList");
-            return None
+            error("Invalid Component for ComponentList")
         }
 
         if self.has(entity)
@@ -100,21 +101,54 @@ impl ComponentList
         }
         else
         {
+            error("Cannot get component: Component does not exist")
+        }
+    }
+
+    pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
+    {
+        if TypeId::of::<T>() != self.id
+        {
+            error("Invalid Component for ComponentList")
+        }
+
+        if self.has(entity)
+        {
+            Some(unsafe { self.buffer.get::<T>(**entity) })
+        }
+        else
+        {
             None
         }
     }
 
-    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> &mut T
     {
-        if TypeId::of::<T>().hash() != self.id
+        if TypeId::of::<T>() != self.id
         {
-            error("Invalid Component for ComponentList");
-            return None
+            error("Invalid Component for ComponentList")
         }
 
         if self.has(entity)
         {
             unsafe { self.buffer.borrow::<T>(**entity) }
+        }
+        else
+        {
+            error("Cannot get component: Component does not exist")
+        }
+    }
+
+    pub fn try_borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+    {
+        if TypeId::of::<T>() != self.id
+        {
+            error("Invalid Component for ComponentList")
+        }
+
+        if self.has(entity)
+        {
+            Some(unsafe { self.buffer.borrow::<T>(**entity) })
         }
         else
         {
@@ -127,10 +161,6 @@ impl ComponentList
         if self.has(entity)
         {
             self.enabled.set(**entity, false);
-        }
-        else
-        {
-            error("Cannot remove component: Component does not exist");
         }
     }
 

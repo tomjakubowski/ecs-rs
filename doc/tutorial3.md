@@ -106,7 +106,7 @@ It does not have any experience element, nor does it have the `CanFly` or
 
 ## Getting an Entity's Components
 
-There are two methods in `World` related to getting an entity's components.
+There are three methods in `World` related to getting an entity's components.
 
 The first is `World.has_component(&Entity, ComponentId)`, which is just a
 check to see if an entity has a component.
@@ -114,12 +114,14 @@ check to see if an entity has a component.
 assert!(world.has_component(&entity, position_id));
 ```
 The second is `World.get_component::<T>(&Entity)`, which returns an
+`T`, where `T: Component`.
+```rust
+assert_eq!(world.get_component::<Position>(&entity), Position { x: 5.0, y: 2.0 });
+```
+This method will fail if the component has not been added to the entity. If you would rather have an option, there is the third method, `World.try_component::<T>(&Entity)`, which returns an
 `Option<T>`, where `T: Component`.
 ```rust
-assert!(world.get_component::<CanFly>(&entity).is_none());
-if let Some(pos) = world.get_component::<Position>(&entity) {
-    assert_eq!(pos, Position { x: 5.0, y: 2.0 });
-}
+assert!(world.try_component::<CanFly>(&entity).is_none());
 ```
 
 ## Modifying an Entity's Components
