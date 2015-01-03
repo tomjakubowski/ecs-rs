@@ -62,8 +62,7 @@ impl EntityProcess for PrintEntityID
 
 impl System for PrintEntityID {} // Empty implementation, but there are some methods that may be overriden.
 ```
-Of course, this is not a system by itself, and so cannot be registered to the
-world. We need to use this `EntityProcess` to construct an `EntitySystem`.
+Of course, this is not a system by itself (well, it is a `System`, but it does not implement `Active` or `Passive`), and so cannot be registered to the world. We need to use this `EntityProcess` to construct an `EntitySystem`.
 ```rust
 let process = PrintEntityID;
 let system = EntitySystem::new(process, Aspect::nil());

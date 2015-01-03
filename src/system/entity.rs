@@ -2,6 +2,7 @@
 //! Systems to specifically deal with entities.
 
 use std::collections::hash_set::{HashSet, Iter};
+use std::ops::Deref;
 
 use Aspect;
 use EntityData;
@@ -25,8 +26,9 @@ impl<'a> EntityIter<'a>
     }
 }
 
-impl<'a> Deref<Iter<'a, Entity>> for EntityIter<'a>
+impl<'a> Deref for EntityIter<'a>
 {
+    type Target = Iter<'a, Entity>;
     fn deref(&self) -> &Iter<'a, Entity>
     {
         &self.inner

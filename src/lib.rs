@@ -29,7 +29,7 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(macro_rules)]
+#![feature(associated_types, macro_rules)]
 
 #![unstable]
 
@@ -57,7 +57,7 @@ mod macros
         ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
         {
             $(
-                #[deriving(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Default, PartialEq, Show)]
                 pub struct $Name
                 {
                     $(pub $field : $ty),+
@@ -71,7 +71,7 @@ mod macros
         ($($Name:ident;)+) =>
         {
             $(
-                #[deriving(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Default, PartialEq, Show)]
                 pub struct $Name;
             )+
         };
@@ -82,11 +82,12 @@ mod macros
         ($($Name:ident($Type:ty);)+) =>
         {
             $(
-                #[deriving(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Default, PartialEq, Show)]
                 pub struct $Name(pub $Type);
 
-                impl Deref<$Type> for $Name
+                impl ::std::ops::Deref for $Name
                 {
+                    type Target = $Type;
                     fn deref(&self) -> &$Type
                     {
                         let $Name(ref ret) = *self;

@@ -58,6 +58,7 @@ feature! {
 As of this writing, all the above macros auto-derive the following traits for
 convenience:
 _(This list will probably change as new features are needed)_
+- Copy
 - Default
 - PartialEq
 - Show
@@ -77,7 +78,7 @@ builder.register_component::<Team>();
 ## Getting a Component's ComponentId
 
 Components are distinguished by their ComponentId (which is really just taken
-from their TypeID. See std::intrinsics::TypeId). To easily obtain this, use
+from their TypeID. See `std::intrinsics::TypeId`). To easily obtain this, use
 the `component_id!` macro:
 ```rust
 let position_id = component_id!(Position);

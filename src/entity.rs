@@ -1,8 +1,9 @@
 
 //! Entity identifier and manager types.
 
-use std::collections::Bitv;
+use std::collections::{VecMap};
 use std::default::Default;
+use std::ops::Deref;
 
 use Components;
 
@@ -13,7 +14,7 @@ pub type Id = u64;
 /// The first element (uint) is the entity's index, used to locate components.
 /// This value can be recycled, so the second element (Uuid) is used as an identifier.
 #[stable]
-#[deriving(Copy, Clone, Eq, Hash, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, Hash, PartialEq, Show)]
 pub struct Entity(uint, Id);
 
 #[stable]
@@ -53,8 +54,10 @@ impl Default for Entity
 }
 
 #[unstable="Used internally and subject to change"]
-impl Deref<uint> for Entity
+impl Deref for Entity
 {
+    type Target = uint;
+
     #[inline]
     fn deref(&self) -> &uint
     {
@@ -97,8 +100,7 @@ impl EntityModifier for () { fn modify(&mut self, _: &mut Components, _: Entity)
 pub struct EntityManager
 {
     indexes: IndexPool,
-    entities: Vec<Entity>,
-    enabled: Bitv,
+    entities: VecMap<Entity>,
     next_id: Id,
 }
 
@@ -110,20 +112,14 @@ impl EntityManager
         EntityManager
         {
             indexes: IndexPool::new(),
-            entities: Vec::new(),
-            enabled: Bitv::new(),
+            entities: VecMap::new(),
             next_id: 0,
         }
     }
 
     pub fn clear(&mut self) -> Vec<Entity>
     {
-        let mut vec = Vec::new();
-        ::std::mem::swap(&mut vec, &mut self.entities);
-        vec.retain(|e| self.enabled[**e]);
-        self.enabled = Bitv::new();
-        self.indexes = IndexPool::new();
-        vec
+        self.entities.into_iter().map(|(_, val)| val).collect()
     }
 
     pub fn count(&self) -> uint
@@ -136,19 +132,7 @@ impl EntityManager
     {
         self.next_id += 1;
         let ret = Entity(self.indexes.get_id(), self.next_id);
-        if *ret >= self.entities.len()
-        {
-            let diff = *ret - self.entities.len();
-            self.entities.grow(diff+1, Entity::nil());
-        }
-        self.entities[*ret] = ret.clone();
-
-        if *ret >= self.enabled.len()
-        {
-            let diff = *ret - self.enabled.len();
-            self.enabled.grow(diff+1, false);
-        }
-        self.enabled.set(*ret, true);
+        self.entities.insert(*ret, ret.clone());
         ret
     }
 
@@ -156,14 +140,13 @@ impl EntityManager
     #[inline]
     pub fn is_valid(&self, entity: &Entity) -> bool
     {
-        &self.entities[**entity] == entity && self.enabled[**entity]
+        self.entities.contains_key(&**entity)
     }
 
     /// Deletes an entity from the manager.
     pub fn delete_entity(&mut self, entity: &Entity)
     {
-        self.entities[**entity] = Entity::nil();
-        self.enabled.set(**entity, false);
+        self.entities.remove(&**entity);
         self.indexes.return_id(**entity);
     }
 }

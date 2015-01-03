@@ -2,6 +2,7 @@
 use std::borrow::BorrowFrom;
 use std::collections::hash_map::{Entry, HashMap};
 use std::hash::Hash;
+use std::ops::{Index, IndexMut};
 
 use Entity;
 use Manager;
@@ -24,7 +25,7 @@ impl<Key: GroupKey> GroupManager<Key>
             groups: HashMap::new(),
         }
     }
-    
+
     pub fn create(&mut self, key: Key)
     {
         match self.groups.entry(key)
@@ -35,13 +36,13 @@ impl<Key: GroupKey> GroupManager<Key>
             _ => (),
         }
     }
-    
+
     pub fn get<Sized? Q>(&self, key: &Q) -> Option<&Vec<Entity>>
         where Q: Hash+Eq+BorrowFrom<Key>
     {
         self.groups.get(key)
     }
-    
+
     pub fn delete<Sized? Q>(&mut self, key: &Q) -> Option<Vec<Entity>>
         where Q: Hash+Eq+BorrowFrom<Key>
     {

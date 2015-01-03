@@ -19,34 +19,34 @@ pub mod group;
 pub mod player;
 
 /// Mutable manager
-pub trait Manager: Any
+pub trait Manager: Any+Sized
 {
     fn as_any(&self) -> &Any
     {
         self as &Any
     }
-    
+
     fn as_any_mut(&mut self) -> &mut Any
     {
         self as &mut Any
     }
-    
+
     /// Called when an entity is added to the world.
     fn activated(&mut self, _: &Entity, _: &World)
     {
-        
+
     }
-    
+
     /// Called when an entity is modified in the world.
     fn reactivated(&mut self, _: &Entity, _: &World)
     {
-        
+
     }
-    
+
     /// Called when an entity is removed from the world.
     fn deactivated(&mut self, _: &Entity, _: &World)
     {
-        
+
     }
 }
 

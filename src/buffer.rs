@@ -38,9 +38,9 @@ impl Buffer
             panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
-        while offset + self.stride > self.bytes.len()
+        if offset + self.stride > self.bytes.len()
         {
-            self.bytes.grow(self.stride, 0u8);
+            self.bytes.resize(offset+self.stride, 0u8);
         }
 
         let src = slice::ref_slice(val).as_ptr() as *const u8;

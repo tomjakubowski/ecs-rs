@@ -1,5 +1,6 @@
 
 use std::collections::VecMap;
+use std::ops::{Index, IndexMut};
 
 use Aspect;
 use Entity;
@@ -22,7 +23,7 @@ impl PlayerManager
             aspect: Aspect::nil(),
         }
     }
-    
+
     pub fn with_aspect(aspect: Aspect) -> PlayerManager
     {
         PlayerManager
@@ -31,17 +32,17 @@ impl PlayerManager
             aspect: aspect,
         }
     }
-    
+
     pub fn add(&mut self, player: uint, entity: Entity) -> Option<Entity>
     {
         self.players.insert(player, entity)
     }
-    
+
     pub fn get(&self, player: uint) -> Option<&Entity>
     {
         self.players.get(&player)
     }
-    
+
     pub fn remove(&mut self, player: uint) -> Option<Entity>
     {
         self.players.remove(&player)

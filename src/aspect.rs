@@ -9,7 +9,7 @@ use World;
 
 /// A filter for entities base on their components.
 #[stable]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Aspect
 {
     all: Vec<ComponentId>,

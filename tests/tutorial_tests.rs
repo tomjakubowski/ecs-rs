@@ -4,7 +4,7 @@
 #![deny(warnings)]
 //#![forbid(warnings)]
 
-#![feature(phase)]
+#![feature(phase, slicing_syntax)]
 
 #[phase(plugin, link)]
 extern crate ecs;
@@ -153,7 +153,7 @@ mod tutorial4
         builder.register_system(box system);
         let mut world = builder.build();
 
-        for _ in range(0i, 3)
+        for _ in 0i..3
         {
             world.build_entity(());
         }
