@@ -1,7 +1,7 @@
 
 //! Management of entities, components, systems, and managers
 
-use std::any::{AnyRefExt, AnyMutRefExt};
+use std::any::{Any, AnyRefExt, AnyMutRefExt};
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::intrinsics::TypeId;
@@ -195,7 +195,7 @@ impl World
     {
         match self.managers.get(&key)
         {
-            Some(any) => match any.borrow().as_any().downcast_ref::<T>() {
+            Some(any) => match any.borrow().downcast_ref::<T>() {
                 Some(manager) => call(manager),
                 None => error("Tried to downcast manager to wrong type")
             },
@@ -208,7 +208,7 @@ impl World
     {
         match self.managers.get(&key)
         {
-            Some(any) => match any.borrow_mut().as_any_mut().downcast_mut::<T>() {
+            Some(any) => match any.borrow_mut().downcast_mut::<T>() {
                 Some(manager) => call(manager),
                 None => error("Could not downcast manager")
             },

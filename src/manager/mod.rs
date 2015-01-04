@@ -3,8 +3,11 @@
 
 //! Traits to observe and manage entities as they are changed in the world.
 
-use std::any::Any;
+use std::any::{Any, AnyRefExt, AnyMutRefExt};
 use std::cell::RefCell;
+use std::intrinsics::TypeId;
+use std::mem;
+use std::raw::TraitObject;
 use std::rc::Rc;
 
 use Entity;
@@ -19,18 +22,8 @@ pub mod group;
 pub mod player;
 
 /// Mutable manager
-pub trait Manager: Any+Sized
+pub trait Manager: Any
 {
-    fn as_any(&self) -> &Any
-    {
-        self as &Any
-    }
-
-    fn as_any_mut(&mut self) -> &mut Any
-    {
-        self as &mut Any
-    }
-
     /// Called when an entity is added to the world.
     fn activated(&mut self, _: &Entity, _: &World)
     {
@@ -47,6 +40,52 @@ pub trait Manager: Any+Sized
     fn deactivated(&mut self, _: &Entity, _: &World)
     {
 
+    }
+}
+
+impl<'a> AnyRefExt<'a> for &'a Manager {
+    #[inline]
+    fn is<T: 'static>(self) -> bool {
+        // Get TypeId of the type this function is instantiated with
+        let t = TypeId::of::<T>();
+
+        // Get TypeId of the type in the trait object
+        let boxed = self.get_type_id();
+
+        // Compare both TypeIds on equality
+        t == boxed
+    }
+
+    #[inline]
+    fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject = mem::transmute(self);
+
+                // Extract the data pointer
+                Some(mem::transmute(to.data))
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> AnyMutRefExt<'a> for &'a mut Manager {
+    #[inline]
+    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject = mem::transmute(self);
+
+                // Extract the data pointer
+                Some(mem::transmute(to.data))
+            }
+        } else {
+            None
+        }
     }
 }
 
