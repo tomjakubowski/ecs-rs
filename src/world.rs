@@ -1,7 +1,7 @@
 
 //! Management of entities, components, systems, and managers
 
-use std::any::{Any, AnyRefExt, AnyMutRefExt};
+use std::any::Any;
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::intrinsics::TypeId;
@@ -68,7 +68,7 @@ impl World
     }
 
     #[stable]
-    pub fn entity_count(&self) -> uint
+    pub fn entity_count(&self) -> usize
     {
         self.entities.borrow().count()
     }
@@ -191,28 +191,30 @@ impl World
     }
 
     /// Calls a function with an immutable reference to the requested manager
-    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
+    pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&T) -> U
     {
         match self.managers.get(&key)
         {
-            Some(any) => match any.borrow().downcast_ref::<T>() {
+            Some(any) => match (&*any.borrow() as &Any).downcast_ref::<T>() {
                 Some(manager) => call(manager),
                 None => error("Tried to downcast manager to wrong type")
             },
-            None => error(format!("Could not find any manager for key '{}'", key).as_slice())
+            None => error(&*format!("Could not find any manager for key '{}'", key))
         }
     }
 
     /// Calls a function with a mutable reference to the requested manager
-    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
+    pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
         match self.managers.get(&key)
         {
-            Some(any) => match any.borrow_mut().downcast_mut::<T>() {
+            Some(any) => match (&mut *any.borrow_mut() as &mut Any).downcast_mut::<T>() {
                 Some(manager) => call(manager),
                 None => error("Could not downcast manager")
             },
-            None => error(format!("Could not find any manager for key '{}'", key).as_slice())
+            None => error(&*format!("Could not find any manager for key '{}'", key))
         }
     }
 
@@ -265,11 +267,12 @@ impl World
     /// if the component does not exist.
     ///
     /// Panics if the entity is invalid.
-    pub fn try_with_component<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
+    pub fn try_with_component<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
+        where F: Fn(&mut T) -> U
     {
         if self.is_valid(entity)
         {
-            self.components.try_with::<T, U>(entity, call)
+            self.components.try_with(entity, call)
         }
         else
         {
@@ -280,11 +283,12 @@ impl World
     /// Calls a function with a mutable reference to a component and returns the result.
     ///
     /// Panics if the component does not exist or the entity is invalid.
-    pub fn with_component<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
+    pub fn with_component<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
         if self.is_valid(entity)
         {
-            self.components.with::<T, U>(entity, call)
+            self.components.with(entity, call)
         }
         else
         {
@@ -374,7 +378,7 @@ impl SystemManager
         }
         else
         {
-            error(format!("No passive system registered for key '{}'", key).as_slice());
+            error(&*format!("No passive system registered for key '{}'", key));
         }
     }
 
@@ -491,7 +495,8 @@ impl ComponentManager
         }
     }
 
-    fn try_with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
+    fn try_with<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
+        where F: Fn(&mut T) -> U
     {
         match self.components.get(&TypeId::of::<T>())
         {
@@ -500,7 +505,8 @@ impl ComponentManager
         }
     }
 
-    fn with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
+    fn with<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
         match self.components.get(&TypeId::of::<T>())
         {
@@ -525,13 +531,13 @@ impl<'a> Components<'a>
     /// Adds a component to an entity.
     pub fn add<T:Component>(&mut self, entity: &Entity, component: T)
     {
-        self.inner.add::<T>(entity, component)
+        self.inner.add(entity, component)
     }
 
     /// Sets an entity's component.
     pub fn set<T:Component>(&mut self, entity: &Entity, component: T)
     {
-        self.inner.set::<T>(entity, component)
+        self.inner.set(entity, component)
     }
 
     /// Returns an entity's component.
@@ -539,13 +545,13 @@ impl<'a> Components<'a>
     /// Fails if the component doesn't exist.
     pub fn get<T:Component>(&self, entity: &Entity) -> T
     {
-        self.inner.get::<T>(entity)
+        self.inner.get(entity)
     }
 
     /// Returns an entity's component or None if it can't be found.
     pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
-        self.inner.try_get::<T>(entity)
+        self.inner.try_get(entity)
     }
 
     /// Check if an entity has a component
@@ -579,13 +585,15 @@ impl<'a> Components<'a>
     }
 
     /// Calls a function with an immutable reference to the requested manager
-    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
+    pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&T) -> U
     {
         self.world.with_manager(key, call)
     }
 
     /// Calls a function with an mutable reference to the requested manager
-    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
+    pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
         self.world.with_manager_mut(key, call)
     }
@@ -596,23 +604,25 @@ impl<'a> EntityData<'a>
 {
     /// Calls a function with a mutable reference to a component and returns the result or None
     /// if the component does not exist.
-    pub fn try_with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> Option<U>
+    pub fn try_with<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
+        where F: Fn(&mut T) -> U
     {
-        self.inner.try_with::<T, U>(entity, call)
+        self.inner.try_with(entity, call)
     }
 
     /// Calls a function with a mutable reference to a component and returns the result.
     ///
     /// Panics if the component does not exist.
-    pub fn with<T:Component, U>(&self, entity: &Entity, call: |&mut T| -> U) -> U
+    pub fn with<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
-        self.inner.with::<T, U>(entity, call)
+        self.inner.with(entity, call)
     }
 
     /// Sets an entity's component.
     pub fn set<T:Component>(&self, entity: &Entity, component: T)
     {
-        self.inner.set::<T>(entity, component)
+        self.inner.set(entity, component)
     }
 
     /// Returns an entity's component.
@@ -620,13 +630,13 @@ impl<'a> EntityData<'a>
     /// Fails if the component doesn't exist.
     pub fn get<T:Component>(&self, entity: &Entity) -> T
     {
-        self.inner.get::<T>(entity)
+        self.inner.get(entity)
     }
 
     /// Returns an entity's component or None if it can't be found.
     pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
     {
-        self.inner.try_get::<T>(entity)
+        self.inner.try_get(entity)
     }
 
     /// Check if an entity has a component
@@ -654,13 +664,15 @@ impl<'a> EntityData<'a>
     }
 
     /// Calls a function with an immutable reference to the requested manager
-    pub fn with_manager<T: Manager, U>(&self, key: &'static str, call: |&T| -> U) -> U
+    pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&T) -> U
     {
         self.world.with_manager(key, call)
     }
 
     /// Calls a function with an mutable reference to the requested manager
-    pub fn with_manager_mut<T: Manager, U>(&self, key: &'static str, call: |&mut T| -> U) -> U
+    pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
+        where F: Fn(&mut T) -> U
     {
         self.world.with_manager_mut(key, call)
     }

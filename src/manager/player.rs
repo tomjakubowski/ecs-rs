@@ -33,33 +33,35 @@ impl PlayerManager
         }
     }
 
-    pub fn add(&mut self, player: uint, entity: Entity) -> Option<Entity>
+    pub fn add(&mut self, player: usize, entity: Entity) -> Option<Entity>
     {
         self.players.insert(player, entity)
     }
 
-    pub fn get(&self, player: uint) -> Option<&Entity>
+    pub fn get(&self, player: usize) -> Option<&Entity>
     {
         self.players.get(&player)
     }
 
-    pub fn remove(&mut self, player: uint) -> Option<Entity>
+    pub fn remove(&mut self, player: usize) -> Option<Entity>
     {
         self.players.remove(&player)
     }
 }
 
-impl Index<uint, Entity> for PlayerManager
+impl Index<usize> for PlayerManager
 {
-    fn index(&self, i: &uint) -> &Entity
+    type Output = Entity;
+    fn index(&self, i: &usize) -> &Entity
     {
         &self.players[*i]
     }
 }
 
-impl IndexMut<uint, Entity> for PlayerManager
+impl IndexMut<usize> for PlayerManager
 {
-    fn index_mut(&mut self, i: &uint) -> &mut Entity
+    type Output = Entity;
+    fn index_mut(&mut self, i: &usize) -> &mut Entity
     {
         &mut self.players[*i]
     }

@@ -1,19 +1,20 @@
 
 use std::borrow::BorrowFrom;
-use std::collections::{HashMap, RingBuf};
+use std::collections::{RingBuf};
+use std::collections::hash_map::{HashMap, Hasher};
 use std::hash::Hash;
 
 use Manager;
 
-pub trait Key: Hash+Eq+'static {}
-impl<T: Hash+Eq+'static> Key for T {}
+pub trait StateKey: Hash<Hasher>+Eq+'static {}
+impl<T: Hash<Hasher>+Eq+'static> StateKey for T {}
 
 pub struct StateManager<Event, State: 'static>
 {
     states: HashMap<Event, State>,
 }
 
-impl<E: Key, S: 'static> StateManager<E, S>
+impl<E: StateKey, S: 'static> StateManager<E, S>
 {
     pub fn new() -> StateManager<E, S>
     {
@@ -28,14 +29,14 @@ impl<E: Key, S: 'static> StateManager<E, S>
         self.states.insert(event, state)
     }
 
-    pub fn get<Sized? Q>(&self, event: &Q) -> Option<&S>
-        where Q: Hash+Eq+BorrowFrom<E>
+    pub fn get<Q: ?Sized>(&self, event: &Q) -> Option<&S>
+        where Q: StateKey+BorrowFrom<E>
     {
         self.states.get(event)
     }
 
-    pub fn clear<Sized? Q>(&mut self, event: &Q) -> Option<S>
-        where Q: Hash+Eq+BorrowFrom<E>
+    pub fn clear<Q: ?Sized>(&mut self, event: &Q) -> Option<S>
+        where Q: StateKey+BorrowFrom<E>
     {
         self.states.remove(event)
     }
@@ -46,7 +47,7 @@ impl<E: Key, S: 'static> StateManager<E, S>
     }
 }
 
-impl<E: Key, S: 'static> Manager for StateManager<E, S>
+impl<E: StateKey, S: 'static> Manager for StateManager<E, S>
 {
 
 }

@@ -12,12 +12,12 @@ use std::raw::Slice;
 pub struct Buffer
 {
     bytes: Vec<u8>,
-    stride: uint,
+    stride: usize,
 }
 
 impl Buffer
 {
-    pub fn new(stride: uint) -> Buffer
+    pub fn new(stride: usize) -> Buffer
     {
         Buffer
         {
@@ -31,7 +31,7 @@ impl Buffer
         self.bytes = Vec::new();
     }
 
-    pub unsafe fn set<T: Copy+'static>(&mut self, index: uint, val: &T)
+    pub unsafe fn set<T: Copy+'static>(&mut self, index: usize, val: &T)
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -48,7 +48,7 @@ impl Buffer
         ptr::copy_memory(dst, src, self.stride);
     }
 
-    pub unsafe fn get<T: Copy+'static>(&self, index: uint) -> T
+    pub unsafe fn get<T: Copy+'static>(&self, index: usize) -> T
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -71,7 +71,7 @@ impl Buffer
         }
     }
 
-    pub unsafe fn borrow<T: Copy+'static>(&mut self, index: uint) -> &mut T
+    pub unsafe fn borrow<T: Copy+'static>(&mut self, index: usize) -> &mut T
     {
         if mem::size_of::<T>() != self.stride
         {
@@ -94,17 +94,17 @@ impl Buffer
         }
     }
 
-    pub fn len(&self) -> uint
+    pub fn len(&self) -> usize
     {
         self.bytes.len() / self.stride
     }
 
-    pub fn bytes_len(&self) -> uint
+    pub fn bytes_len(&self) -> usize
     {
         self.bytes.len()
     }
 
-    pub fn stride(&self) -> uint
+    pub fn stride(&self) -> usize
     {
         self.stride
     }

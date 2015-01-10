@@ -2,7 +2,6 @@
 //! System to specifically deal with interactions between two types of entity.
 
 use std::collections::hash_map::{HashMap, IterMut};
-use std::ops::Deref;
 
 use Aspect;
 use EntityData;
@@ -15,17 +14,9 @@ pub struct DataIter<'a, Data: 'static>
     inner: IterMut<'a, Entity, Data>,
 }
 
-impl<'a, Data: 'static> Deref for DataIter<'a, Data>
+impl<'a, Data: 'static> Iterator for DataIter<'a, Data>
 {
-    type Target = IterMut<'a, Entity, Data>;
-    fn deref(&self) -> &IterMut<'a, Entity, Data>
-    {
-        &self.inner
-    }
-}
-
-impl<'a, Data: 'static> Iterator<(&'a Entity, &'a mut Data)> for DataIter<'a, Data>
-{
+    type Item = (&'a Entity, &'a mut Data);
     fn next(&mut self) -> Option<(&'a Entity, &'a mut Data)>
     {
         self.inner.next()

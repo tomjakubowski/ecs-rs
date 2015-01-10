@@ -29,9 +29,10 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(associated_types, macro_rules)]
+#![feature(box_syntax)]
 
 #![unstable]
+#![allow(unstable)]
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
@@ -49,7 +50,7 @@ pub mod manager;
 pub mod system;
 pub mod world;
 
-#[macro_escape]
+#[macro_use]
 mod macros
 {
     #[macro_export]

@@ -11,11 +11,11 @@ pub type Id = u64;
 
 /// Dual identifier for an entity.
 ///
-/// The first element (uint) is the entity's index, used to locate components.
+/// The first element (usize) is the entity's index, used to locate components.
 /// This value can be recycled, so the second element (Uuid) is used as an identifier.
 #[stable]
 #[derive(Copy, Clone, Eq, Hash, PartialEq, Show)]
-pub struct Entity(uint, Id);
+pub struct Entity(usize, Id);
 
 #[stable]
 impl Entity
@@ -29,7 +29,7 @@ impl Entity
     /// Returns the entity's index.
     #[stable]
     #[inline]
-    pub fn get_index(&self) -> uint
+    pub fn get_index(&self) -> usize
     {
         self.0.clone()
     }
@@ -56,10 +56,10 @@ impl Default for Entity
 #[unstable="Used internally and subject to change"]
 impl Deref for Entity
 {
-    type Target = uint;
+    type Target = usize;
 
     #[inline]
-    fn deref(&self) -> &uint
+    fn deref(&self) -> &usize
     {
         &self.0
     }
@@ -70,7 +70,7 @@ pub trait EntityBuilder: 'static
     fn build(&mut self, &mut Components, Entity);
 }
 
-impl EntityBuilder for |&mut Components, Entity|: 'static
+impl<F: 'static> EntityBuilder for F where F: FnMut(&mut Components, Entity)
 {
     fn build(&mut self, c: &mut Components, e: Entity)
     {
@@ -85,7 +85,7 @@ pub trait EntityModifier: 'static
     fn modify(&mut self, &mut Components, Entity);
 }
 
-impl EntityModifier for |&mut Components, Entity|: 'static
+impl<F: 'static> EntityModifier for F where F: FnMut(&mut Components, Entity)
 {
     fn modify(&mut self, c: &mut Components, e: Entity)
     {
@@ -122,7 +122,7 @@ impl EntityManager
         self.entities.into_iter().map(|(_, val)| val).collect()
     }
 
-    pub fn count(&self) -> uint
+    pub fn count(&self) -> usize
     {
         self.indexes.count()
     }
@@ -153,8 +153,8 @@ impl EntityManager
 
 struct IndexPool
 {
-    recycled: Vec<uint>,
-    next_index: uint,
+    recycled: Vec<usize>,
+    next_index: usize,
 }
 
 impl IndexPool
@@ -164,16 +164,16 @@ impl IndexPool
         IndexPool
         {
             recycled: Vec::new(),
-            next_index: 1u,
+            next_index: 1us,
         }
     }
 
-    pub fn count(&self) -> uint
+    pub fn count(&self) -> usize
     {
         self.next_index - self.recycled.len()
     }
 
-    pub fn get_id(&mut self) -> uint
+    pub fn get_id(&mut self) -> usize
     {
         match self.recycled.pop()
         {
@@ -185,7 +185,7 @@ impl IndexPool
         }
     }
 
-    pub fn return_id(&mut self, id: uint)
+    pub fn return_id(&mut self, id: usize)
     {
         self.recycled.push(id);
     }

@@ -3,11 +3,8 @@
 
 //! Traits to observe and manage entities as they are changed in the world.
 
-use std::any::{Any, AnyRefExt, AnyMutRefExt};
+use std::any::Any;
 use std::cell::RefCell;
-use std::intrinsics::TypeId;
-use std::mem;
-use std::raw::TraitObject;
 use std::rc::Rc;
 
 use Entity;
@@ -42,7 +39,7 @@ pub trait Manager: Any
 
     }
 }
-
+/*
 impl<'a> AnyRefExt<'a> for &'a Manager {
     #[inline]
     fn is<T: 'static>(self) -> bool {
@@ -88,6 +85,7 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Manager {
         }
     }
 }
+*/
 
 impl<T: Manager> Manager for Rc<RefCell<T>>
 {

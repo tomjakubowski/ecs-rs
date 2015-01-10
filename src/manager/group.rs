@@ -1,6 +1,6 @@
 
 use std::borrow::BorrowFrom;
-use std::collections::hash_map::{Entry, HashMap};
+use std::collections::hash_map::{Entry, HashMap, Hasher};
 use std::hash::Hash;
 use std::ops::{Index, IndexMut};
 
@@ -8,8 +8,8 @@ use Entity;
 use Manager;
 use World;
 
-pub trait GroupKey: Hash+Eq+'static {}
-impl<T: Hash+Eq+'static> GroupKey for T {}
+pub trait GroupKey: Hash<Hasher>+Eq+'static {}
+impl<T: Hash<Hasher>+Eq+'static> GroupKey for T {}
 
 pub struct GroupManager<Key: GroupKey>
 {
@@ -31,35 +31,37 @@ impl<Key: GroupKey> GroupManager<Key>
         match self.groups.entry(key)
         {
             Entry::Vacant(entry) => {
-                entry.set(Vec::new());
+                entry.insert(Vec::new());
             },
             _ => (),
         }
     }
 
-    pub fn get<Sized? Q>(&self, key: &Q) -> Option<&Vec<Entity>>
-        where Q: Hash+Eq+BorrowFrom<Key>
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&Vec<Entity>>
+        where Q: GroupKey+BorrowFrom<Key>
     {
         self.groups.get(key)
     }
 
-    pub fn delete<Sized? Q>(&mut self, key: &Q) -> Option<Vec<Entity>>
-        where Q: Hash+Eq+BorrowFrom<Key>
+    pub fn delete<Q: ?Sized>(&mut self, key: &Q) -> Option<Vec<Entity>>
+        where Q: GroupKey+BorrowFrom<Key>
     {
         self.groups.remove(key)
     }
 }
 
-impl<Key: GroupKey> Index<Key, Vec<Entity>> for GroupManager<Key>
+impl<Key: GroupKey> Index<Key> for GroupManager<Key>
 {
+    type Output = Vec<Entity>;
     fn index(&self, i: &Key) -> &Vec<Entity>
     {
         &self.groups[*i]
     }
 }
 
-impl<Key: GroupKey> IndexMut<Key, Vec<Entity>> for GroupManager<Key>
+impl<Key: GroupKey> IndexMut<Key> for GroupManager<Key>
 {
+    type Output = Vec<Entity>;
     fn index_mut(&mut self, i: &Key) -> &mut Vec<Entity>
     {
         &mut self.groups[*i]

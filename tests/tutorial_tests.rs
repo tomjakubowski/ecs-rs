@@ -1,12 +1,12 @@
 // These tests are to make sure that the code in the tutorials is valid.
 // If these break, make sure to fix the corresponding tutorials too.
 
-#![deny(warnings)]
-//#![forbid(warnings)]
+#![feature(box_syntax)]
 
-#![feature(phase, slicing_syntax)]
+//#![deny(warnings)]
+#![forbid(warnings)]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate ecs;
 
 #[test]
@@ -69,8 +69,8 @@ mod tutorial3
     }
 
     new_type! {
-        Team(int);
-        Experience(int);
+        Team(i32);
+        Experience(i32);
     }
 
     feature! {
@@ -97,7 +97,7 @@ mod tutorial3
 
         let mut world = builder.build();
         let entity = world.build_entity(
-            |c: &mut Components, e: Entity| {
+            |&: c: &mut Components, e: Entity| {
                 c.add(&e, Position { x: 5.0, y: 2.0 });
                 c.add(&e, Velocity { dx: 0.0, dy: 0.0 });
                 c.add(&e, Team(1));
@@ -111,7 +111,7 @@ mod tutorial3
         assert!(world.try_component::<CanFly>(&entity).is_none());
 
         world.modify_entity(entity,
-            |c: &mut Components, e: Entity| {
+            |&: c: &mut Components, e: Entity| {
                 c.add(&e, CanFly);
                 c.set(&e, Team(2));
                 c.remove::<Velocity>(&e);
@@ -153,7 +153,7 @@ mod tutorial4
         builder.register_system(box system);
         let mut world = builder.build();
 
-        for _ in 0i..3
+        for _ in 0..3
         {
             world.build_entity(());
         }
