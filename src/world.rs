@@ -1,7 +1,6 @@
 
 //! Management of entities, components, systems, and managers
 
-use std::any::Any;
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::intrinsics::TypeId;
@@ -191,12 +190,12 @@ impl World
     }
 
     /// Calls a function with an immutable reference to the requested manager
-    pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&T) -> U
+    pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, mut call: F) -> U
+        where F: FnMut(&T) -> U
     {
         match self.managers.get(&key)
         {
-            Some(any) => match (&*any.borrow() as &Any).downcast_ref::<T>() {
+            Some(any) => match any.borrow().downcast_ref::<T>() {
                 Some(manager) => call(manager),
                 None => error("Tried to downcast manager to wrong type")
             },
@@ -205,14 +204,14 @@ impl World
     }
 
     /// Calls a function with a mutable reference to the requested manager
-    pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&mut T) -> U
+    pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, mut call: F) -> U
+        where F: FnMut(&mut T) -> U
     {
         match self.managers.get(&key)
         {
-            Some(any) => match (&mut *any.borrow_mut() as &mut Any).downcast_mut::<T>() {
+            Some(any) => match any.borrow_mut().downcast_mut::<T>() {
                 Some(manager) => call(manager),
-                None => error("Could not downcast manager")
+                None => error("Tried to downcast manager to wrong type")
             },
             None => error(&*format!("Could not find any manager for key '{}'", key))
         }
@@ -268,7 +267,7 @@ impl World
     ///
     /// Panics if the entity is invalid.
     pub fn try_with_component<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         if self.is_valid(entity)
         {
@@ -284,7 +283,7 @@ impl World
     ///
     /// Panics if the component does not exist or the entity is invalid.
     pub fn with_component<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         if self.is_valid(entity)
         {
@@ -495,8 +494,8 @@ impl ComponentManager
         }
     }
 
-    fn try_with<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
-        where F: Fn(&mut T) -> U
+    fn try_with<T:Component, U, F>(&self, entity: &Entity, mut call: F) -> Option<U>
+        where F: FnMut(&mut T) -> U
     {
         match self.components.get(&TypeId::of::<T>())
         {
@@ -505,8 +504,8 @@ impl ComponentManager
         }
     }
 
-    fn with<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
-        where F: Fn(&mut T) -> U
+    fn with<T:Component, U, F>(&self, entity: &Entity, mut call: F) -> U
+        where F: FnMut(&mut T) -> U
     {
         match self.components.get(&TypeId::of::<T>())
         {
@@ -586,14 +585,14 @@ impl<'a> Components<'a>
 
     /// Calls a function with an immutable reference to the requested manager
     pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&T) -> U
+        where F: FnMut(&T) -> U
     {
         self.world.with_manager(key, call)
     }
 
     /// Calls a function with an mutable reference to the requested manager
     pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         self.world.with_manager_mut(key, call)
     }
@@ -605,7 +604,7 @@ impl<'a> EntityData<'a>
     /// Calls a function with a mutable reference to a component and returns the result or None
     /// if the component does not exist.
     pub fn try_with<T:Component, U, F>(&self, entity: &Entity, call: F) -> Option<U>
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         self.inner.try_with(entity, call)
     }
@@ -614,7 +613,7 @@ impl<'a> EntityData<'a>
     ///
     /// Panics if the component does not exist.
     pub fn with<T:Component, U, F>(&self, entity: &Entity, call: F) -> U
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         self.inner.with(entity, call)
     }
@@ -665,14 +664,14 @@ impl<'a> EntityData<'a>
 
     /// Calls a function with an immutable reference to the requested manager
     pub fn with_manager<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&T) -> U
+        where F: FnMut(&T) -> U
     {
         self.world.with_manager(key, call)
     }
 
     /// Calls a function with an mutable reference to the requested manager
     pub fn with_manager_mut<T: Manager, U, F>(&self, key: &'static str, call: F) -> U
-        where F: Fn(&mut T) -> U
+        where F: FnMut(&mut T) -> U
     {
         self.world.with_manager_mut(key, call)
     }

@@ -5,6 +5,9 @@
 
 use std::any::Any;
 use std::cell::RefCell;
+use std::intrinsics::TypeId;
+use std::mem;
+use std::raw::TraitObject;
 use std::rc::Rc;
 
 use Entity;
@@ -39,10 +42,10 @@ pub trait Manager: Any
 
     }
 }
-/*
-impl<'a> AnyRefExt<'a> for &'a Manager {
+
+impl Manager {
     #[inline]
-    fn is<T: 'static>(self) -> bool {
+    fn is<T: 'static>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
 
@@ -54,7 +57,7 @@ impl<'a> AnyRefExt<'a> for &'a Manager {
     }
 
     #[inline]
-    fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
+    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -67,11 +70,9 @@ impl<'a> AnyRefExt<'a> for &'a Manager {
             None
         }
     }
-}
 
-impl<'a> AnyMutRefExt<'a> for &'a mut Manager {
     #[inline]
-    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
+    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -85,7 +86,6 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Manager {
         }
     }
 }
-*/
 
 impl<T: Manager> Manager for Rc<RefCell<T>>
 {
