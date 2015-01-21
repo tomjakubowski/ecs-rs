@@ -1,7 +1,7 @@
 
 //! Entity identifier and manager types.
 
-use std::collections::{VecMap};
+use std::collections::vec_map::{VecMap};
 use std::default::Default;
 use std::ops::Deref;
 
@@ -115,6 +115,11 @@ impl EntityManager
             entities: VecMap::new(),
             next_id: 0,
         }
+    }
+
+    pub fn with_entities<F>(&self, mut call: F) where F: FnMut(&Entity)
+    {
+        for _ in self.entities.iter().map(|(_, e)| call(e)) {}
     }
 
     pub fn clear(&mut self) -> Vec<Entity>

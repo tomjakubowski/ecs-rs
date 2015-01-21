@@ -72,6 +72,11 @@ impl World
         self.entities.borrow().count()
     }
 
+    pub fn with_entities<F>(&self, call: F) where F: FnMut(&Entity)
+    {
+        self.entities.borrow().with_entities(call)
+    }
+
     pub fn clear(&mut self)
     {
         let entities = self.entities.borrow_mut().clear();
