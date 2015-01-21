@@ -1,8 +1,8 @@
 
 //! Store data in parts to allow defining different entities through composition.
 
+use std::any::TypeId;
 use std::collections::Bitv;
-use std::intrinsics::TypeId;
 use std::mem;
 
 use buffer::Buffer;

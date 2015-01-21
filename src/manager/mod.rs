@@ -3,9 +3,8 @@
 
 //! Traits to observe and manage entities as they are changed in the world.
 
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::cell::RefCell;
-use std::intrinsics::TypeId;
 use std::mem;
 use std::raw::TraitObject;
 use std::rc::Rc;

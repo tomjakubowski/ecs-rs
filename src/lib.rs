@@ -103,7 +103,7 @@ mod macros
     macro_rules! component_id {
         ($ty:ty) =>
         {
-            ::std::intrinsics::TypeId::of::<$ty>()
+            ::std::any::TypeId::of::<$ty>()
         };
     }
 
@@ -111,7 +111,7 @@ mod macros
     macro_rules! component_ids {
         ($($ty:ty),+) =>
         {
-            vec![$(::std::intrinsics::TypeId::of::<$ty>(),)+]
+            vec![$(::std::any::TypeId::of::<$ty>(),)+]
         };
     }
 }

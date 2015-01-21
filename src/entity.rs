@@ -124,7 +124,7 @@ impl EntityManager
 
     pub fn clear(&mut self) -> Vec<Entity>
     {
-        self.entities.into_iter().map(|(_, val)| val).collect()
+        self.entities.drain().map(|(_, val)| val).collect()
     }
 
     pub fn count(&self) -> usize

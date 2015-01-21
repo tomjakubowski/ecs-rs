@@ -1,9 +1,9 @@
 
 //! Management of entities, components, systems, and managers
 
+use std::any::TypeId;
 use std::cell::{RefCell};
 use std::collections::HashMap;
-use std::intrinsics::TypeId;
 use std::mem;
 
 use {Component, ComponentId};
