@@ -55,7 +55,7 @@ impl Buffer
             panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
-        if offset >= self.bytes.len()
+        if offset > self.bytes.len()
         {
             panic!("Index Out of Bounds")
         }
@@ -65,7 +65,7 @@ impl Buffer
             let oslice: &[T] = mem::transmute(Slice
             {
                 data: _slice.as_ptr() as *const T,
-                len: self.stride,
+                len: 1,
             });
             oslice[0]
         }
@@ -78,7 +78,7 @@ impl Buffer
             panic!("Type has invalid size for buffer")
         }
         let offset = self.stride * index;
-        if offset >= self.bytes.len()
+        if offset > self.bytes.len()
         {
             panic!("Index Out of Bounds")
         }
@@ -88,7 +88,7 @@ impl Buffer
             let oslice: &mut [T] = mem::transmute(Slice
             {
                 data: _slice.as_ptr() as *const T,
-                len: self.stride,
+                len: 1,
             });
             &mut oslice[0]
         }
