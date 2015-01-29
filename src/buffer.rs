@@ -1,5 +1,4 @@
 
-#![experimental]
 #![doc(hidden)]
 
 // This is a strange, wonderful, disgusting, and useful object.
@@ -44,7 +43,7 @@ impl Buffer
         }
 
         let src = slice::ref_slice(val).as_ptr() as *const u8;
-        let dst = self.bytes.slice_mut(offset, offset + self.stride).as_mut_ptr();
+        let dst = self.bytes[offset..(offset + self.stride)].as_mut_ptr();
         ptr::copy_memory(dst, src, self.stride);
     }
 
@@ -61,7 +60,7 @@ impl Buffer
         }
         else
         {
-            let _slice = self.bytes.slice(offset, offset + self.stride);
+            let _slice = &self.bytes[offset..(offset + self.stride)];
             let oslice: &[T] = mem::transmute(Slice
             {
                 data: _slice.as_ptr() as *const T,
@@ -84,7 +83,7 @@ impl Buffer
         }
         else
         {
-            let _slice = self.bytes.slice(offset, offset + self.stride);
+            let _slice = &mut self.bytes[offset..(offset + self.stride)];
             let oslice: &mut [T] = mem::transmute(Slice
             {
                 data: _slice.as_ptr() as *const T,

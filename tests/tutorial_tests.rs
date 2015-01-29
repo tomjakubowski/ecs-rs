@@ -1,7 +1,7 @@
 // These tests are to make sure that the code in the tutorials is valid.
 // If these break, make sure to fix the corresponding tutorials too.
 
-#![feature(box_syntax)]
+#![feature(box_syntax, core)]
 
 //#![deny(warnings)]
 #![forbid(warnings)]

@@ -29,10 +29,9 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(box_syntax)]
+#![feature(box_syntax, core, collections, hash, std_misc)]
 
 #![unstable]
-#![allow(unstable)]
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
@@ -58,7 +57,7 @@ mod macros
         ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
         {
             $(
-                #[derive(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Debug, Default, PartialEq)]
                 pub struct $Name
                 {
                     $(pub $field : $ty),+
@@ -72,7 +71,7 @@ mod macros
         ($($Name:ident;)+) =>
         {
             $(
-                #[derive(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Debug, Default, PartialEq)]
                 pub struct $Name;
             )+
         };
@@ -83,7 +82,7 @@ mod macros
         ($($Name:ident($Type:ty);)+) =>
         {
             $(
-                #[derive(Copy, Default, PartialEq, Show)]
+                #[derive(Copy, Debug, Default, PartialEq)]
                 pub struct $Name(pub $Type);
 
                 impl ::std::ops::Deref for $Name

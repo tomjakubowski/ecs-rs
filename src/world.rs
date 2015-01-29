@@ -31,14 +31,12 @@ pub struct WorldBuilder
     world: World,
 }
 
-#[experimental]
 pub struct Components<'a>
 {
     inner: &'a ComponentManager,
     world: &'a World,
 }
 
-#[experimental]
 pub struct EntityData<'a>
 {
     inner: &'a ComponentManager,
@@ -529,7 +527,6 @@ impl ComponentManager
     }
 }
 
-#[experimental]
 impl<'a> Components<'a>
 {
     /// Adds a component to an entity.
@@ -603,7 +600,6 @@ impl<'a> Components<'a>
     }
 }
 
-#[experimental]
 impl<'a> EntityData<'a>
 {
     /// Calls a function with a mutable reference to a component and returns the result or None

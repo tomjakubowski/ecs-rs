@@ -14,7 +14,7 @@ pub type Id = u64;
 /// The first element (usize) is the entity's index, used to locate components.
 /// This value can be recycled, so the second element (Uuid) is used as an identifier.
 #[stable]
-#[derive(Copy, Clone, Eq, Hash, PartialEq, Show)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Entity(usize, Id);
 
 #[stable]
