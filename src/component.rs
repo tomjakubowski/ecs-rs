@@ -9,10 +9,8 @@ use buffer::Buffer;
 use error;
 use Entity;
 
-#[stable]
 pub trait Component: Copy+'static {}
 
-#[stable]
 impl<T:Copy+'static> Component for T {}
 
 pub type ComponentId = TypeId;

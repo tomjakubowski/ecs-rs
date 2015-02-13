@@ -61,7 +61,6 @@ impl<Key: GroupKey> Index<Key> for GroupManager<Key>
 
 impl<Key: GroupKey> IndexMut<Key> for GroupManager<Key>
 {
-    type Output = Vec<Entity>;
     fn index_mut(&mut self, i: &Key) -> &mut Vec<Entity>
     {
         &mut self.groups[*i]

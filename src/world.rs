@@ -25,7 +25,6 @@ pub struct World
     managers: HashMap<&'static str, RefCell<Box<Manager>>>,
 }
 
-#[stable]
 pub struct WorldBuilder
 {
     world: World,
@@ -57,24 +56,25 @@ struct SystemManager
 impl World
 {
     /// Returns if an entity is valid (registered with the entity manager).
-    #[stable]
     #[inline]
     pub fn is_valid(&self, entity: &Entity) -> bool
     {
         self.entities.borrow().is_valid(entity)
     }
 
-    #[stable]
+    /// Returns the number of active entities.
     pub fn entity_count(&self) -> usize
     {
         self.entities.borrow().count()
     }
 
+    /// Call a function on all active entities.
     pub fn with_entities<F>(&self, call: F) where F: FnMut(&Entity)
     {
         self.entities.borrow().with_entities(call)
     }
 
+    /// Clears the world of all entities
     pub fn clear(&mut self)
     {
         let entities = self.entities.borrow_mut().clear();
@@ -678,11 +678,9 @@ impl<'a> EntityData<'a>
     }
 }
 
-#[stable]
 impl WorldBuilder
 {
     /// Create a new world builder.
-    #[stable]
     pub fn new() -> WorldBuilder
     {
         WorldBuilder {
@@ -699,35 +697,30 @@ impl WorldBuilder
     }
 
     /// Completes the world setup and return the World object for use.
-    #[stable]
     pub fn build(self) -> World
     {
         self.world
     }
 
     /// Registers a manager.
-    #[stable]
     pub fn register_manager(&mut self, key: &'static str, manager: Box<Manager>)
     {
         self.world.managers.insert(key, RefCell::new(manager));
     }
 
     /// Registers a component.
-    #[stable]
     pub fn register_component<T: Component>(&mut self)
     {
         self.world.components.register(ComponentList::new::<T>());
     }
 
     /// Registers a system.
-    #[stable]
     pub fn register_system(&mut self, sys: Box<Active>)
     {
         self.world.systems.borrow_mut().register(sys);
     }
 
     /// Registers a passive system.
-    #[stable]
     pub fn register_passive(&mut self, key: &'static str, sys: Box<Passive>)
     {
         self.world.systems.borrow_mut().register_passive(key, sys);

@@ -132,7 +132,7 @@ mod tutorial4
 
     impl EntityProcess for PrintEntityID
     {
-        fn process(&self, mut entities: EntityIter, _: &mut EntityData)
+        fn process(&self, entities: EntityIter, _: &mut EntityData)
         {
             for entity in entities
             {

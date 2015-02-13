@@ -1,6 +1,4 @@
 
-#![unstable]
-
 //! Traits to observe and manage entities as they are changed in the world.
 
 use std::any::{Any, TypeId};

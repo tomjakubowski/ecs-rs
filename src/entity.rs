@@ -13,21 +13,17 @@ pub type Id = u64;
 ///
 /// The first element (usize) is the entity's index, used to locate components.
 /// This value can be recycled, so the second element (Uuid) is used as an identifier.
-#[stable]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Entity(usize, Id);
 
-#[stable]
 impl Entity
 {
-    #[stable]
     pub fn nil() -> Entity
     {
         Entity(0, 0)
     }
 
     /// Returns the entity's index.
-    #[stable]
     #[inline]
     pub fn get_index(&self) -> usize
     {
@@ -35,7 +31,6 @@ impl Entity
     }
 
     /// Returns the entity's unique identifier.
-    #[stable]
     #[inline]
     pub fn get_id(&self) -> Id
     {
@@ -43,17 +38,14 @@ impl Entity
     }
 }
 
-#[stable]
 impl Default for Entity
 {
-    #[stable]
     fn default() -> Entity
     {
         Entity::nil()
     }
 }
 
-#[unstable="Used internally and subject to change"]
 impl Deref for Entity
 {
     type Target = usize;

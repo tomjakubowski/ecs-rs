@@ -31,8 +31,6 @@
 
 #![feature(box_syntax, core, collections, hash, std_misc)]
 
-#![unstable]
-
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};
 pub use entity::{Entity, EntityBuilder, EntityModifier};

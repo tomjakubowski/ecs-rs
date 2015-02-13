@@ -60,7 +60,6 @@ impl Index<usize> for PlayerManager
 
 impl IndexMut<usize> for PlayerManager
 {
-    type Output = Entity;
     fn index_mut(&mut self, i: &usize) -> &mut Entity
     {
         &mut self.players[*i]
