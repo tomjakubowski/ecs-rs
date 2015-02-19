@@ -1,66 +1,31 @@
 
 //! Systems to specifically deal with entities.
 
-use std::collections::hash_set::{HashSet, Iter};
+use std::collections::HashSet;
 
 use Aspect;
-use EntityData;
+use ComponentManager;
+use DataHelper;
 use Entity;
-use {Active, Passive, System};
-use World;
+use EntityData;
+use EntityIter;
+use {System, Process};
 
-pub struct EntityIter<'a>
+pub trait EntityProcess<T: ComponentManager>: System<T>
 {
-    inner: Iter<'a, Entity>,
+    fn process<'a>(&mut self, EntityIter<'a, T>, &mut DataHelper<T>);
 }
 
-impl<'a> EntityIter<'a>
-{
-    pub fn new(iter: Iter<'a, Entity>) -> EntityIter<'a>
-    {
-        EntityIter
-        {
-            inner: iter,
-        }
-    }
-}
-
-impl<'a> Iterator for EntityIter<'a>
-{
-    type Item = &'a Entity;
-    fn next(&mut self) -> Option<&'a Entity>
-    {
-        self.inner.next()
-    }
-}
-
-pub trait EntityProcess: System
-{
-    fn process<'a>(&self, EntityIter<'a>, &mut EntityData);
-}
-
-pub trait PassiveEntityProcess: System
-{
-    fn process<'a>(&mut self, EntityIter<'a>, &World);
-}
-
-pub struct EntitySystem<T: EntityProcess>
+pub struct EntitySystem<U: ComponentManager, T: EntityProcess<U>>
 {
     interested: HashSet<Entity>,
-    aspect: Aspect,
-    inner: T,
+    aspect: Aspect<U>,
+    pub inner: T,
 }
 
-pub struct PassiveEntitySystem<T: PassiveEntityProcess>
+impl<U: ComponentManager, T: EntityProcess<U>> EntitySystem<U, T>
 {
-    interested: HashSet<Entity>,
-    aspect: Aspect,
-    inner: T,
-}
-
-impl<T: EntityProcess> EntitySystem<T>
-{
-    pub fn new(inner: T, aspect: Aspect) -> EntitySystem<T>
+    pub fn new(inner: T, aspect: Aspect<U>) -> EntitySystem<U, T>
     {
         EntitySystem
         {
@@ -71,113 +36,56 @@ impl<T: EntityProcess> EntitySystem<T>
     }
 }
 
-impl<T: EntityProcess> Active for EntitySystem<T>
+impl<U: ComponentManager, T: EntityProcess<U>> System<U> for EntitySystem<U, T>
 {
-    fn process(&mut self, c: &mut EntityData)
+    fn activated(&mut self, entity: &EntityData<U>, world: &U)
+    {
+        if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn reactivated(&mut self, entity: &EntityData<U>, world: &U)
+    {
+        if self.interested.contains(&**entity)
+        {
+            if self.aspect.check(entity, world)
+            {
+                self.inner.reactivated(entity, world);
+            }
+            else
+            {
+                self.interested.remove(&**entity);
+                self.inner.deactivated(entity, world);
+            }
+        }
+        else if self.aspect.check(entity, world)
+        {
+            self.interested.insert(**entity);
+            self.inner.activated(entity, world);
+        }
+    }
+
+    fn deactivated(&mut self, entity: &EntityData<U>, world: &U)
+    {
+        if self.interested.remove(&**entity)
+        {
+            self.inner.deactivated(entity, world);
+        }
+    }
+
+    fn is_active(&self) -> bool
+    {
+        self.inner.is_active()
+    }
+}
+
+impl<U: ComponentManager, T: EntityProcess<U>> Process<U> for EntitySystem<U, T>
+{
+    fn process(&mut self, c: &mut DataHelper<U>)
     {
         self.inner.process(EntityIter::new(self.interested.iter()), c);
-    }
-}
-
-impl<T: EntityProcess> System for EntitySystem<T>
-{
-    fn activated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.aspect.check(entity, world)
-        {
-            self.interested.insert(entity.clone());
-            self.inner.activated(entity, world);
-        }
-    }
-
-    fn reactivated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.interested.contains(entity)
-        {
-            if self.aspect.check(entity, world)
-            {
-                self.inner.reactivated(entity, world);
-            }
-            else
-            {
-                self.interested.remove(entity);
-                self.inner.deactivated(entity, world);
-            }
-        }
-        else if self.aspect.check(entity, world)
-        {
-            self.interested.insert(entity.clone());
-            self.inner.activated(entity, world);
-        }
-    }
-
-    fn deactivated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.interested.remove(entity)
-        {
-            self.inner.deactivated(entity, world);
-        }
-    }
-}
-
-impl<T: PassiveEntityProcess> PassiveEntitySystem<T>
-{
-    pub fn new(inner: T, aspect: Aspect) -> PassiveEntitySystem<T>
-    {
-        PassiveEntitySystem
-        {
-            interested: HashSet::new(),
-            aspect: aspect,
-            inner: inner,
-        }
-    }
-}
-
-impl<T: PassiveEntityProcess> Passive for PassiveEntitySystem<T>
-{
-    fn process(&mut self, c: &World)
-    {
-        self.inner.process(EntityIter { inner: self.interested.iter() }, c);
-    }
-}
-
-impl<T: PassiveEntityProcess> System for PassiveEntitySystem<T>
-{
-    fn activated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.aspect.check(entity, world)
-        {
-            self.interested.insert(entity.clone());
-            self.inner.activated(entity, world);
-        }
-    }
-
-    fn reactivated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.interested.contains(entity)
-        {
-            if self.aspect.check(entity, world)
-            {
-                self.inner.reactivated(entity, world);
-            }
-            else
-            {
-                self.interested.remove(entity);
-                self.inner.deactivated(entity, world);
-            }
-        }
-        else if self.aspect.check(entity, world)
-        {
-            self.interested.insert(entity.clone());
-            self.inner.activated(entity, world);
-        }
-    }
-
-    fn deactivated(&mut self, entity: &Entity, world: &World)
-    {
-        if self.interested.remove(entity)
-        {
-            self.inner.deactivated(entity, world);
-        }
     }
 }

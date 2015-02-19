@@ -1,21 +1,21 @@
 
-use Entity;
+use ComponentManager;
+use DataHelper;
 use EntityData;
-use {Active, Passive, System};
-use World;
+use {Process, System};
 
 /// System which operates every certain number of updates.
-pub struct IntervalSystem<T: Active>
+pub struct IntervalSystem<U: ComponentManager, T: Process<U>>
 {
     interval: u8,
     ticker: u8,
     inner: T,
 }
 
-impl<T: Active> IntervalSystem<T>
+impl<U: ComponentManager, T: Process<U>> IntervalSystem<U, T>
 {
     /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: T, interval: u8) -> IntervalSystem<T>
+    pub fn new(system: T, interval: u8) -> IntervalSystem<U, T>
     {
         IntervalSystem
         {
@@ -26,9 +26,9 @@ impl<T: Active> IntervalSystem<T>
     }
 }
 
-impl<T: Active> Active for IntervalSystem<T>
+impl<U: ComponentManager, T: Process<U>> Process<U> for IntervalSystem<U, T>
 {
-    fn process(&mut self, c: &mut EntityData)
+    fn process(&mut self, c: &mut DataHelper<U>)
     {
         self.ticker += 1;
         if self.ticker == self.interval
@@ -39,20 +39,25 @@ impl<T: Active> Active for IntervalSystem<T>
     }
 }
 
-impl<T: Active> System for IntervalSystem<T>
+impl<U: ComponentManager, T: Process<U>> System<U> for IntervalSystem<U, T>
 {
-    fn activated(&mut self, e: &Entity, w: &World)
+    fn activated(&mut self, e: &EntityData<U>, w: &U)
     {
         self.inner.activated(e, w);
     }
 
-    fn reactivated(&mut self, e: &Entity, w: &World)
+    fn reactivated(&mut self, e: &EntityData<U>, w: &U)
     {
         self.inner.reactivated(e, w);
     }
 
-    fn deactivated(&mut self, e: &Entity, w: &World)
+    fn deactivated(&mut self, e: &EntityData<U>, w: &U)
     {
         self.inner.deactivated(e, w);
+    }
+
+    fn is_active(&self) -> bool
+    {
+        self.inner.is_active()
     }
 }

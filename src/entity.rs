@@ -1,18 +1,20 @@
 
 //! Entity identifier and manager types.
 
-use std::collections::vec_map::{VecMap};
+use std::collections::hash_set::{HashSet, Iter, Drain};
 use std::default::Default;
 use std::ops::Deref;
 
-use Components;
+use Aspect;
+use ComponentManager;
+use EntityData;
 
 pub type Id = u64;
 
 /// Dual identifier for an entity.
 ///
 /// The first element (usize) is the entity's index, used to locate components.
-/// This value can be recycled, so the second element (Uuid) is used as an identifier.
+/// This value can be recycled, so the second element (u64) is used as an identifier.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Entity(usize, Id);
 
@@ -57,42 +59,74 @@ impl Deref for Entity
     }
 }
 
-pub trait EntityBuilder: 'static
+pub struct EntityIter<'a, T: ComponentManager>
 {
-    fn build(&mut self, &mut Components, Entity);
+    inner: Iter<'a, Entity>,
 }
 
-impl<F: 'static> EntityBuilder for F where F: FnMut(&mut Components, Entity)
+pub struct FilteredEntityIter<'a, T: ComponentManager>
 {
-    fn build(&mut self, c: &mut Components, e: Entity)
+    inner: EntityIter<'a, T>,
+    aspect: Aspect<T>,
+    components: &'a T,
+}
+
+impl<'a, T: ComponentManager> EntityIter<'a, T>
+{
+    pub fn new(iter: Iter<'a, Entity>) -> EntityIter<'a, T>
     {
-        (*self)(c, e);
+        EntityIter
+        {
+            inner: iter,
+        }
+    }
+
+    pub fn filter(self, aspect: Aspect<T>, components: &'a T) -> FilteredEntityIter<'a, T>
+    {
+        FilteredEntityIter
+        {
+            inner: self,
+            aspect: aspect,
+            components: components,
+        }
     }
 }
 
-impl EntityBuilder for () { fn build(&mut self, _: &mut Components, _: Entity) {} }
-
-pub trait EntityModifier: 'static
+impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
 {
-    fn modify(&mut self, &mut Components, Entity);
-}
-
-impl<F: 'static> EntityModifier for F where F: FnMut(&mut Components, Entity)
-{
-    fn modify(&mut self, c: &mut Components, e: Entity)
+    type Item = EntityData<'a, T>;
+    fn next(&mut self) -> Option<EntityData<'a, T>>
     {
-        (*self)(c, e);
+        self.inner.next().map(|x| EntityData(x))
     }
 }
 
-impl EntityModifier for () { fn modify(&mut self, _: &mut Components, _: Entity) {} }
+impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
+{
+    type Item = EntityData<'a, T>;
+    fn next(&mut self) -> Option<EntityData<'a, T>>
+    {
+        for x in self.inner.by_ref()
+        {
+            if self.aspect.check(&x, self.components)
+            {
+                return Some(x);
+            }
+            else
+            {
+                continue
+            }
+        }
+        None
+    }
+}
 
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
 pub struct EntityManager
 {
-    indexes: IndexPool,
-    entities: VecMap<Entity>,
+    indices: IndexPool,
+    entities: HashSet<Entity>,
     next_id: Id,
 }
 
@@ -103,33 +137,33 @@ impl EntityManager
     {
         EntityManager
         {
-            indexes: IndexPool::new(),
-            entities: VecMap::new(),
+            indices: IndexPool::new(),
+            entities: HashSet::new(),
             next_id: 0,
         }
     }
 
-    pub fn with_entities<F>(&self, mut call: F) where F: FnMut(&Entity)
+    pub fn iter<T: ComponentManager>(&self) -> EntityIter<T>
     {
-        for _ in self.entities.iter().map(|(_, e)| call(e)) {}
+        EntityIter::new(self.entities.iter())
     }
 
-    pub fn clear(&mut self) -> Vec<Entity>
+    pub fn drain(&mut self) -> Drain<Entity>
     {
-        self.entities.drain().map(|(_, val)| val).collect()
+        self.entities.drain()
     }
 
     pub fn count(&self) -> usize
     {
-        self.indexes.count()
+        self.indices.count()
     }
 
-    /// Creates a new `Entity`, assigning it the first available identifier.
-    pub fn create_entity(&mut self) -> Entity
+    /// Creates a new `Entity`, assigning it the first available index.
+    pub fn create(&mut self) -> Entity
     {
         self.next_id += 1;
-        let ret = Entity(self.indexes.get_id(), self.next_id);
-        self.entities.insert(*ret, ret.clone());
+        let ret = Entity(self.indices.get_index(), self.next_id);
+        self.entities.insert(ret.clone());
         ret
     }
 
@@ -137,14 +171,14 @@ impl EntityManager
     #[inline]
     pub fn is_valid(&self, entity: &Entity) -> bool
     {
-        self.entities.contains_key(&**entity)
+        self.entities.contains(entity)
     }
 
     /// Deletes an entity from the manager.
-    pub fn delete_entity(&mut self, entity: &Entity)
+    pub fn remove(&mut self, entity: &Entity)
     {
-        self.entities.remove(&**entity);
-        self.indexes.return_id(**entity);
+        self.entities.remove(entity);
+        self.indices.return_id(**entity);
     }
 }
 
@@ -170,7 +204,7 @@ impl IndexPool
         self.next_index - self.recycled.len()
     }
 
-    pub fn get_id(&mut self) -> usize
+    pub fn get_index(&mut self) -> usize
     {
         match self.recycled.pop()
         {

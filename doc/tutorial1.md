@@ -1,3 +1,5 @@
+## ecs-rs has just gone through a big refactoring and docs will remain out of date until dust has settled.
+
 Tutorial 1: The World
 =====================
 The `World` is the top level object in the entity-component system.

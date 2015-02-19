@@ -32,88 +32,212 @@
 #![feature(box_syntax, core, collections, hash, std_misc)]
 
 pub use aspect::Aspect;
-pub use component::{Component, ComponentId};
-pub use entity::{Entity, EntityBuilder, EntityModifier};
-pub use manager::{Manager};
-pub use system::{Active, Passive, System};
-pub use world::{Components, EntityData, World, WorldBuilder};
+pub use component::{Component, ComponentList};
+pub use component::{EntityBuilder, EntityModifier};
+pub use entity::{Entity, EntityIter};
+pub use system::{System, Process};
+pub use world::{ComponentManager, SystemManager, DataHelper, World};
 
-pub mod buffer;
+use std::ops::{Deref};
 
 pub mod aspect;
 pub mod component;
 pub mod entity;
-pub mod manager;
 pub mod system;
 pub mod world;
+
+pub struct BuildData<'a, T: ComponentManager>(&'a Entity);
+
+impl<'a, T: ComponentManager> BuildData<'a, T>
+{
+    pub fn insert<U: Component>(&self, c: &mut ComponentList<U>, component: U) -> Option<U>
+    {
+        unsafe { c.insert(self.0, component) }
+    }
+}
+
+pub struct ModifyData<'a, T: ComponentManager>(&'a Entity);
+
+impl<'a, T: ComponentManager> ModifyData<'a, T>
+{
+    pub fn insert<U: Component>(&self, c: &mut ComponentList<U>, component: U) -> Option<U>
+    {
+        unsafe { c.insert(self.0, component) }
+    }
+
+    pub fn get<U: Component>(&self, c: &ComponentList<U>) -> Option<U> where U: Clone
+    {
+        unsafe { c.get(self.0) }
+    }
+
+    pub fn has<U: Component>(&self, c: &ComponentList<U>) -> bool
+    {
+        unsafe { c.has(self.0) }
+    }
+
+    pub fn remove<U: Component>(&self, c: &mut ComponentList<U>) -> Option<U>
+    {
+        unsafe { c.remove(self.0) }
+    }
+}
+
+pub struct EntityData<'a, T: ComponentManager>(&'a Entity);
+
+impl<'a, T: ComponentManager> Deref for EntityData<'a, T>
+{
+    type Target = Entity;
+    fn deref(&self) -> &Entity
+    {
+        self.0
+    }
+}
+
+impl<'a, T: ComponentManager> EntityData<'a, T>
+{
+    pub fn get<U: Component>(&self, c: &ComponentList<U>) -> Option<U> where U: Clone
+    {
+        unsafe { c.get(self.0) }
+    }
+
+    pub fn borrow<'b, U: Component>(&self, c: &'b mut ComponentList<U>) -> Option<&'b mut U>
+    {
+        unsafe { c.borrow(self.0) }
+    }
+
+    pub fn has<U: Component>(&self, c: &ComponentList<U>) -> bool
+    {
+        unsafe { c.has(self.0) }
+    }
+}
 
 #[macro_use]
 mod macros
 {
     #[macro_export]
-    macro_rules! component {
-        ($($Name:ident { $($field:ident : $ty:ty),+ })+) =>
+    macro_rules! components {
         {
-            $(
-                #[derive(Copy, Debug, Default, PartialEq)]
-                pub struct $Name
+            $Name:ident {
+                $(#[$kind:ident] $field_name:ident : $field_ty:ty),+
+            }
+        } => {
+            pub struct $Name {
+                $(
+                    $field_name : $crate::ComponentList<$field_ty>,
+                )+
+            }
+
+            unsafe impl $crate::ComponentManager for $Name
+            {
+                unsafe fn new() -> $Name
                 {
-                    $(pub $field : $ty),+
-                }
-            )+
-        };
-    }
-
-    #[macro_export]
-    macro_rules! feature {
-        ($($Name:ident;)+) =>
-        {
-            $(
-                #[derive(Copy, Debug, Default, PartialEq)]
-                pub struct $Name;
-            )+
-        };
-    }
-
-    #[macro_export]
-    macro_rules! new_type {
-        ($($Name:ident($Type:ty);)+) =>
-        {
-            $(
-                #[derive(Copy, Debug, Default, PartialEq)]
-                pub struct $Name(pub $Type);
-
-                impl ::std::ops::Deref for $Name
-                {
-                    type Target = $Type;
-                    fn deref(&self) -> &$Type
-                    {
-                        let $Name(ref ret) = *self;
-                        ret
+                    $Name {
+                        $(
+                            $field_name : $crate::ComponentList::$kind(),
+                        )+
                     }
                 }
-            )+
+
+                unsafe fn remove_all(&mut self, entity: &$crate::Entity)
+                {
+                    $(
+                        self.$field_name.remove(entity);
+                    )+
+                }
+            }
         };
     }
 
     #[macro_export]
-    macro_rules! component_id {
-        ($ty:ty) =>
+    macro_rules! systems {
         {
-            ::std::any::TypeId::of::<$ty>()
+            $Name:ident<$components:ty> {
+                $($field_name:ident : $field_ty:ty = $field_init:expr),+
+            }
+        } => {
+            pub struct $Name {
+                $(
+                    $field_name : $field_ty,
+                )+
+            }
+
+            unsafe impl $crate::SystemManager<$components> for $Name
+            {
+                #[allow(unused_unsafe)] // The aspect macro is probably going to be used here and it also expands to an unsafe block.
+                unsafe fn new() -> $Name
+                {
+                    $Name {
+                        $(
+                            $field_name : $field_init,
+                        )+
+                    }
+                }
+
+                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                {
+                    $(
+                        self.$field_name.activated(&en, co);
+                    )+
+                }
+
+                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                {
+                    $(
+                        self.$field_name.reactivated(&en, co);
+                    )+
+                }
+
+                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                {
+                    $(
+                        self.$field_name.deactivated(&en, co);
+                    )+
+                }
+
+                unsafe fn update(&mut self, co: &mut $crate::DataHelper<$components>)
+                {
+                    $(
+                        if self.$field_name.is_active() {
+                            self.$field_name.process(co);
+                        }
+                    )+
+                }
+            }
         };
     }
 
     #[macro_export]
-    macro_rules! component_ids {
-        ($($ty:ty),+) =>
+    macro_rules! aspect {
         {
-            vec![$(::std::any::TypeId::of::<$ty>(),)+]
+            <$components:ty>
+            all: [$($all_field:ident),*]
+            none: [$($none_field:ident),*]
+        } => {
+            unsafe {
+                Aspect::new(box |en: &$crate::EntityData<$components>, co: &$components| {
+                    ($(en.has(&co.$all_field) &&)* true) &&
+                    !($(en.has(&co.$none_field) ||)* false)
+                })
+            }
+        };
+        {
+            <$components:ty>
+            all: [$($field:ident),*]
+        } => {
+            aspect!(
+                <$components>
+                all: [$($field),*]
+                none: []
+            )
+        };
+        {
+            <$components:ty>
+            none: [$($field:ident),*]
+        } => {
+            aspect!(
+                <$components>
+                all: []
+                none: [$($field),*]
+            )
         };
     }
-}
-
-pub fn error(string: &str) -> !
-{
-    panic!("[ecs-rs] ERROR: {}", string)
 }

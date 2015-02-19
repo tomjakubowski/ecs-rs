@@ -1,3 +1,5 @@
+## ecs-rs has just gone through a big refactoring and docs will remain out of date until dust has settled.
+
 Tutorial 2: Entities
 ====================
 Entities are the main part of an entity-component system, and in this

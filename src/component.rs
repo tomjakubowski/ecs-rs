@@ -1,169 +1,159 @@
 
-//! Store data in parts to allow defining different entities through composition.
+use std::collections::{HashMap, VecMap};
+use std::ops::{Index, IndexMut};
 
-use std::any::TypeId;
-use std::collections::Bitv;
-use std::mem;
+use self::InnerComponentList::{Hot, Cold};
 
-use buffer::Buffer;
-use error;
+use {BuildData, ModifyData};
+use ComponentManager;
 use Entity;
 
-pub trait Component: Copy+'static {}
+pub trait Component: 'static {}
 
-impl<T:Copy+'static> Component for T {}
+impl<T:'static> Component for T {}
 
-pub type ComponentId = TypeId;
+pub struct ComponentList<T: Component>(InnerComponentList<T>);
 
-#[doc(hidden)]
-pub struct ComponentList
+enum InnerComponentList<T: Component>
 {
-    buffer: Buffer,
-    enabled: Bitv,
-    id: ComponentId,
+    Hot(VecMap<T>),
+    Cold(HashMap<usize, T>),
 }
 
-impl ComponentList
+impl<T: Component> ComponentList<T>
 {
-    pub fn new<T:Component>() -> ComponentList
+    pub fn hot() -> ComponentList<T>
     {
-        ComponentList
+        ComponentList(Hot(VecMap::new()))
+    }
+
+    pub fn cold() -> ComponentList<T>
+    {
+        ComponentList(Cold(HashMap::new()))
+    }
+
+    pub unsafe fn insert(&mut self, entity: &Entity, component: T) -> Option<T>
+    {
+        match self.0
         {
-            buffer: Buffer::new(mem::size_of::<T>()),
-            enabled: Bitv::new(),
-            id: TypeId::of::<T>(),
+            Hot(ref mut c) => c.insert(**entity, component),
+            Cold(ref mut c) => c.insert(**entity, component),
         }
     }
 
-    pub fn clear(&mut self)
+    pub unsafe fn remove(&mut self, entity: &Entity) -> Option<T>
     {
-        self.buffer.clear();
-        self.enabled = Bitv::new();
-    }
-
-    pub fn add<T:Component>(&mut self, entity: &Entity, component: &T)
-    {
-        if TypeId::of::<T>() != self.id
+        match self.0
         {
-            error("Invalid Component for ComponentList")
-        }
-
-        if !self.has(entity)
-        {
-            unsafe { self.buffer.set(**entity, component); }
-            if **entity >= self.enabled.len()
-            {
-                let diff = **entity - self.enabled.len();
-                self.enabled.grow(diff+1, false);
-            }
-            self.enabled.set(**entity, true);
-        }
-        else
-        {
-            error("Cannot add component: Component already exists")
+            Hot(ref mut c) => c.remove(&**entity),
+            Cold(ref mut c) => c.remove(&**entity),
         }
     }
 
-    pub fn set<T:Component>(&mut self, entity: &Entity, component: &T)
+    pub unsafe fn get(&self, entity: &Entity) -> Option<T> where T: Clone
     {
-        if TypeId::of::<T>() != self.id
+        match self.0
         {
-            error("Invalid Component for ComponentList")
-        }
-
-        if self.has(entity)
-        {
-            unsafe { self.buffer.set(**entity, component); }
-        }
-        else
-        {
-            error("Cannot set component: Component does not exist")
+            Hot(ref c) => c.get(&**entity).cloned(),
+            Cold(ref c) => c.get(&**entity).cloned(),
         }
     }
 
-    pub fn has(&self, entity: &Entity) -> bool
+    pub unsafe fn has(&self, entity: &Entity) -> bool
     {
-        self.enabled.get(**entity).unwrap_or(false)
-    }
-
-    pub fn get<T:Component>(&self, entity: &Entity) -> T
-    {
-        if TypeId::of::<T>() != self.id
+        match self.0
         {
-            error("Invalid Component for ComponentList")
-        }
-
-        if self.has(entity)
-        {
-            unsafe { self.buffer.get::<T>(**entity) }
-        }
-        else
-        {
-            error("Cannot get component: Component does not exist")
+            Hot(ref c) => c.contains_key(&**entity),
+            Cold(ref c) => c.contains_key(&**entity),
         }
     }
 
-    pub fn try_get<T:Component>(&self, entity: &Entity) -> Option<T>
+    pub unsafe fn borrow(&mut self, entity: &Entity) -> Option<&mut T>
     {
-        if TypeId::of::<T>() != self.id
+        match self.0
         {
-            error("Invalid Component for ComponentList")
-        }
-
-        if self.has(entity)
-        {
-            Some(unsafe { self.buffer.get::<T>(**entity) })
-        }
-        else
-        {
-            None
+            Hot(ref mut c) => c.get_mut(&**entity),
+            Cold(ref mut c) => c.get_mut(&**entity),
         }
     }
+}
 
-    pub fn borrow<T:Component>(&mut self, entity: &Entity) -> &mut T
+pub trait EntityBuilder<T: ComponentManager>
+{
+    fn build<'a>(&mut self, BuildData<'a, T>, &mut T);
+}
+
+impl<T: ComponentManager, F> EntityBuilder<T> for F where F: FnMut(BuildData<T>, &mut T)
+{
+    fn build(&mut self, e: BuildData<T>, c: &mut T)
     {
-        if TypeId::of::<T>() != self.id
-        {
-            error("Invalid Component for ComponentList")
-        }
+        (*self)(e, c);
+    }
+}
 
-        if self.has(entity)
+impl<T: ComponentManager> EntityBuilder<T> for () { fn build(&mut self, _: BuildData<T>, _: &mut T) {} }
+
+pub trait EntityModifier<T: ComponentManager>
+{
+    fn modify<'a>(&mut self, ModifyData<'a, T>, &mut T);
+}
+
+impl<T: ComponentManager, F> EntityModifier<T> for F where F: FnMut(ModifyData<T>, &mut T)
+{
+    fn modify(&mut self, e: ModifyData<T>, c: &mut T)
+    {
+        (*self)(e, c);
+    }
+}
+
+impl<T: ComponentManager> EntityModifier<T> for () { fn modify(&mut self, _: ModifyData<T>, _: &mut T) {} }
+
+impl<T: Component> Index<usize> for ComponentList<T>
+{
+    type Output = T;
+    fn index(&self, index: &usize) -> &T
+    {
+        match self.0
         {
-            unsafe { self.buffer.borrow::<T>(**entity) }
-        }
-        else
-        {
-            error("Cannot get component: Component does not exist")
+            Hot(ref c) => &c[*index],
+            Cold(ref c) => &c[*index],
         }
     }
+}
 
-    pub fn try_borrow<T:Component>(&mut self, entity: &Entity) -> Option<&mut T>
+impl<T: Component> IndexMut<usize> for ComponentList<T>
+{
+    fn index_mut(&mut self, index: &usize) -> &mut T
     {
-        if TypeId::of::<T>() != self.id
+        match self.0
         {
-            error("Invalid Component for ComponentList")
-        }
-
-        if self.has(entity)
-        {
-            Some(unsafe { self.buffer.borrow::<T>(**entity) })
-        }
-        else
-        {
-            None
+            Hot(ref mut c) => &mut c[*index],
+            Cold(ref mut c) => &mut c[*index],
         }
     }
+}
 
-    pub fn remove(&mut self, entity: &Entity)
+impl<T: Component> Index<Entity> for ComponentList<T>
+{
+    type Output = T;
+    fn index(&self, index: &Entity) -> &T
     {
-        if self.has(entity)
+        match self.0
         {
-            self.enabled.set(**entity, false);
+            Hot(ref c) => &c[**index],
+            Cold(ref c) => &c[**index],
         }
     }
+}
 
-    pub fn get_cid(&self) -> ComponentId
+impl<T: Component> IndexMut<Entity> for ComponentList<T>
+{
+    fn index_mut(&mut self, index: &Entity) -> &mut T
     {
-        self.id
+        match self.0
+        {
+            Hot(ref mut c) => &mut c[**index],
+            Cold(ref mut c) => &mut c[**index],
+        }
     }
 }

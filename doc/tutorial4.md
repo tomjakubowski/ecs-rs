@@ -1,3 +1,5 @@
+## ecs-rs has just gone through a big refactoring and docs will remain out of date until dust has settled.
+
 Tutorial 4: Basic Systems
 =========================
 The final important part of an entity component system is the systems.
