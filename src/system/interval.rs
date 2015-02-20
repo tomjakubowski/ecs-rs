@@ -1,4 +1,6 @@
 
+use std::marker::PhantomData;
+
 use ComponentManager;
 use DataHelper;
 use EntityData;
@@ -10,6 +12,7 @@ pub struct IntervalSystem<U: ComponentManager, T: Process<U>>
     interval: u8,
     ticker: u8,
     inner: T,
+    __phantom: PhantomData<fn(U)>,
 }
 
 impl<U: ComponentManager, T: Process<U>> IntervalSystem<U, T>
@@ -22,6 +25,7 @@ impl<U: ComponentManager, T: Process<U>> IntervalSystem<U, T>
             interval: interval,
             ticker: 0,
             inner: system,
+            __phantom: PhantomData::<fn(U)>,
         }
     }
 }

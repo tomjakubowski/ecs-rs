@@ -3,6 +3,7 @@
 
 use std::collections::hash_set::{HashSet, Iter, Drain};
 use std::default::Default;
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use Aspect;
@@ -62,6 +63,7 @@ impl Deref for Entity
 pub struct EntityIter<'a, T: ComponentManager>
 {
     inner: Iter<'a, Entity>,
+    __phantom: PhantomData<fn(T)>,
 }
 
 pub struct FilteredEntityIter<'a, T: ComponentManager>
@@ -78,6 +80,7 @@ impl<'a, T: ComponentManager> EntityIter<'a, T>
         EntityIter
         {
             inner: iter,
+            __phantom: PhantomData::<fn(T)>,
         }
     }
 
@@ -97,7 +100,7 @@ impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
     type Item = EntityData<'a, T>;
     fn next(&mut self) -> Option<EntityData<'a, T>>
     {
-        self.inner.next().map(|x| EntityData(x))
+        self.inner.next().map(|x| EntityData(x, self.__phantom))
     }
 }
 
@@ -195,7 +198,7 @@ impl IndexPool
         IndexPool
         {
             recycled: Vec::new(),
-            next_index: 1us,
+            next_index: 0,
         }
     }
 

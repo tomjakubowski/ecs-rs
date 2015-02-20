@@ -29,7 +29,7 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(box_syntax, core, collections, hash, std_misc)]
+#![feature(box_syntax, core, collections, std_misc)]
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList};
@@ -38,6 +38,7 @@ pub use entity::{Entity, EntityIter};
 pub use system::{System, Process};
 pub use world::{ComponentManager, SystemManager, DataHelper, World};
 
+use std::marker::PhantomData;
 use std::ops::{Deref};
 
 pub mod aspect;
@@ -46,7 +47,7 @@ pub mod entity;
 pub mod system;
 pub mod world;
 
-pub struct BuildData<'a, T: ComponentManager>(&'a Entity);
+pub struct BuildData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
 
 impl<'a, T: ComponentManager> BuildData<'a, T>
 {
@@ -56,7 +57,7 @@ impl<'a, T: ComponentManager> BuildData<'a, T>
     }
 }
 
-pub struct ModifyData<'a, T: ComponentManager>(&'a Entity);
+pub struct ModifyData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
 
 impl<'a, T: ComponentManager> ModifyData<'a, T>
 {
@@ -81,7 +82,7 @@ impl<'a, T: ComponentManager> ModifyData<'a, T>
     }
 }
 
-pub struct EntityData<'a, T: ComponentManager>(&'a Entity);
+pub struct EntityData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
 
 impl<'a, T: ComponentManager> Deref for EntityData<'a, T>
 {
