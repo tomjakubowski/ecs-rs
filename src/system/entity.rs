@@ -4,28 +4,27 @@
 use std::collections::HashSet;
 
 use Aspect;
-use ComponentManager;
 use DataHelper;
 use Entity;
 use EntityData;
 use EntityIter;
 use {System, Process};
 
-pub trait EntityProcess<T: ComponentManager>: System<T>
+pub trait EntityProcess: System
 {
-    fn process<'a>(&mut self, EntityIter<'a, T>, &mut DataHelper<T>);
+    fn process<'a>(&mut self, EntityIter<'a, <Self as System>::Components>, &mut DataHelper<<Self as System>::Components>);
 }
 
-pub struct EntitySystem<U: ComponentManager, T: EntityProcess<U>>
+pub struct EntitySystem<T: EntityProcess>
 {
     interested: HashSet<Entity>,
-    aspect: Aspect<U>,
+    aspect: Aspect<<T as System>::Components>,
     pub inner: T,
 }
 
-impl<U: ComponentManager, T: EntityProcess<U>> EntitySystem<U, T>
+impl<T: EntityProcess> EntitySystem<T>
 {
-    pub fn new(inner: T, aspect: Aspect<U>) -> EntitySystem<U, T>
+    pub fn new(inner: T, aspect: Aspect<<T as System>::Components>) -> EntitySystem<T>
     {
         EntitySystem
         {
@@ -36,9 +35,10 @@ impl<U: ComponentManager, T: EntityProcess<U>> EntitySystem<U, T>
     }
 }
 
-impl<U: ComponentManager, T: EntityProcess<U>> System<U> for EntitySystem<U, T>
+impl<T: EntityProcess> System for EntitySystem<T>
 {
-    fn activated(&mut self, entity: &EntityData<U>, world: &U)
+    type Components = <T as System>::Components;
+    fn activated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
     {
         if self.aspect.check(entity, world)
         {
@@ -47,7 +47,7 @@ impl<U: ComponentManager, T: EntityProcess<U>> System<U> for EntitySystem<U, T>
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData<U>, world: &U)
+    fn reactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
     {
         if self.interested.contains(&**entity)
         {
@@ -68,7 +68,7 @@ impl<U: ComponentManager, T: EntityProcess<U>> System<U> for EntitySystem<U, T>
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData<U>, world: &U)
+    fn deactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
     {
         if self.interested.remove(&**entity)
         {
@@ -82,9 +82,9 @@ impl<U: ComponentManager, T: EntityProcess<U>> System<U> for EntitySystem<U, T>
     }
 }
 
-impl<U: ComponentManager, T: EntityProcess<U>> Process<U> for EntitySystem<U, T>
+impl<T: EntityProcess> Process for EntitySystem<T>
 {
-    fn process(&mut self, c: &mut DataHelper<U>)
+    fn process(&mut self, c: &mut DataHelper<<T as System>::Components>)
     {
         self.inner.process(EntityIter::new(self.interested.iter()), c);
     }

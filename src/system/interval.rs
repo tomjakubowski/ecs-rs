@@ -1,38 +1,33 @@
 
-use std::marker::PhantomData;
-
-use ComponentManager;
 use DataHelper;
 use EntityData;
 use {Process, System};
 
 /// System which operates every certain number of updates.
-pub struct IntervalSystem<U: ComponentManager, T: Process<U>>
+pub struct IntervalSystem<T: Process>
 {
     interval: u8,
     ticker: u8,
     inner: T,
-    __phantom: PhantomData<fn(U)>,
 }
 
-impl<U: ComponentManager, T: Process<U>> IntervalSystem<U, T>
+impl<T: Process> IntervalSystem<T>
 {
     /// Create a new interval system with the specified number of updates between processes.
-    pub fn new(system: T, interval: u8) -> IntervalSystem<U, T>
+    pub fn new(system: T, interval: u8) -> IntervalSystem<T>
     {
         IntervalSystem
         {
             interval: interval,
             ticker: 0,
             inner: system,
-            __phantom: PhantomData::<fn(U)>,
         }
     }
 }
 
-impl<U: ComponentManager, T: Process<U>> Process<U> for IntervalSystem<U, T>
+impl<T: Process> Process for IntervalSystem<T>
 {
-    fn process(&mut self, c: &mut DataHelper<U>)
+    fn process(&mut self, c: &mut DataHelper<<T as System>::Components>)
     {
         self.ticker += 1;
         if self.ticker == self.interval
@@ -43,19 +38,20 @@ impl<U: ComponentManager, T: Process<U>> Process<U> for IntervalSystem<U, T>
     }
 }
 
-impl<U: ComponentManager, T: Process<U>> System<U> for IntervalSystem<U, T>
+impl<T: Process> System for IntervalSystem<T>
 {
-    fn activated(&mut self, e: &EntityData<U>, w: &U)
+    type Components = <T as System>::Components;
+    fn activated(&mut self, e: &EntityData<<T as System>::Components>, w: &<T as System>::Components)
     {
         self.inner.activated(e, w);
     }
 
-    fn reactivated(&mut self, e: &EntityData<U>, w: &U)
+    fn reactivated(&mut self, e: &EntityData<<T as System>::Components>, w: &<T as System>::Components)
     {
         self.inner.reactivated(e, w);
     }
 
-    fn deactivated(&mut self, e: &EntityData<U>, w: &U)
+    fn deactivated(&mut self, e: &EntityData<<T as System>::Components>, w: &<T as System>::Components)
     {
         self.inner.deactivated(e, w);
     }

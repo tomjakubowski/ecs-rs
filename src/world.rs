@@ -14,7 +14,7 @@ enum Event<'a, T> where T: ComponentManager
     RemoveEntity(Entity),
 }
 
-pub struct World<T, U> where T: ComponentManager, U: SystemManager<T>
+pub struct World<T, U> where T: ComponentManager, U: SystemManager<Components=T>
 {
     pub systems: U,
     pub data: DataHelper<T>,
@@ -33,16 +33,17 @@ pub unsafe trait ComponentManager: 'static
     unsafe fn remove_all(&mut self, en: &Entity);
 }
 
-pub unsafe trait SystemManager<T>: 'static where T: ComponentManager
+pub unsafe trait SystemManager: 'static
 {
+    type Components: ComponentManager;
     unsafe fn new() -> Self;
-    unsafe fn activated(&mut self, en: EntityData<T>, co: &T);
-    unsafe fn reactivated(&mut self, en: EntityData<T>, co: &T);
-    unsafe fn deactivated(&mut self, en: EntityData<T>, co: &T);
-    unsafe fn update(&mut self, co: &mut DataHelper<T>);
+    unsafe fn activated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
+    unsafe fn reactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
+    unsafe fn deactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
+    unsafe fn update(&mut self, co: &mut DataHelper<Self::Components>);
 }
 
-impl<T: ComponentManager, U: SystemManager<T>> Deref for World<T, U>
+impl<T: ComponentManager, U: SystemManager<Components=T>> Deref for World<T, U>
 {
     type Target = DataHelper<T>;
     fn deref(&self) -> &DataHelper<T>
@@ -51,7 +52,7 @@ impl<T: ComponentManager, U: SystemManager<T>> Deref for World<T, U>
     }
 }
 
-impl<T: ComponentManager, U: SystemManager<T>> DerefMut for World<T, U>
+impl<T: ComponentManager, U: SystemManager<Components=T>> DerefMut for World<T, U>
 {
     fn deref_mut(&mut self) -> &mut DataHelper<T>
     {
@@ -106,12 +107,12 @@ impl<T: ComponentManager> DataHelper<T>
     }
 }
 
-impl<T: ComponentManager, U: SystemManager<T>> World<T, U>
+impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
 {
     pub fn new() -> World<T, U>
     {
         World {
-            systems: unsafe { <U as SystemManager<T>>::new() },
+            systems: unsafe { <U as SystemManager>::new() },
             data: DataHelper {
                 components: unsafe { <T as ComponentManager>::new() },
                 entities: EntityManager::new(),
@@ -174,7 +175,7 @@ impl<T: ComponentManager, U: SystemManager<T>> World<T, U>
 }
 
 // This function has to be external to World because of borrowing rules
-fn process_event<T: ComponentManager, U: SystemManager<T>>(components: &mut T, systems: &mut U, entities: &mut EntityManager, event: Event<T>)
+fn process_event<T: ComponentManager, U: SystemManager<Components=T>>(components: &mut T, systems: &mut U, entities: &mut EntityManager, event: Event<T>)
 {
     match event
     {

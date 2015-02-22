@@ -14,10 +14,11 @@ pub mod interact;
 pub mod interval;
 
 /// Generic base system type.
-pub trait System<T>: 'static where T: ComponentManager
+pub trait System: 'static
 {
+    type Components: ComponentManager;
     /// Optional method called when an entity is activated.
-    fn activated(&mut self, _: &EntityData<T>, _: &T)
+    fn activated(&mut self, _: &EntityData<Self::Components>, _: &Self::Components)
     {
 
     }
@@ -25,14 +26,14 @@ pub trait System<T>: 'static where T: ComponentManager
     /// Optional method called when an entity is reactivated.
     ///
     /// By default it calls deactivated() followed by activated()
-    fn reactivated(&mut self, e: &EntityData<T>, c: &T)
+    fn reactivated(&mut self, e: &EntityData<Self::Components>, c: &Self::Components)
     {
         self.deactivated(e, c);
         self.activated(e, c);
     }
 
     /// Optional method called when an entity is deactivated.
-    fn deactivated(&mut self, _: &EntityData<T>, _: &T)
+    fn deactivated(&mut self, _: &EntityData<Self::Components>, _: &Self::Components)
     {
 
     }
@@ -43,8 +44,8 @@ pub trait System<T>: 'static where T: ComponentManager
     }
 }
 
-pub trait Process<T>: System<T> where T: ComponentManager
+pub trait Process: System
 {
     /// Process the world.
-    fn process(&mut self, &mut DataHelper<T>);
+    fn process(&mut self, &mut DataHelper<<Self as System>::Components>);
 }

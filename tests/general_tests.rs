@@ -26,6 +26,7 @@ pub struct SomeFeature;
 
 components! {
     TestComponents {
+        #[hot] blank_data: (),
         #[hot] position: Position,
         #[cold] team: Team,
         #[hot] feature: SomeFeature
@@ -35,7 +36,7 @@ components! {
 systems! {
     TestSystems<TestComponents> {
         hello_world: HelloWorld = HelloWorld("Hello, World!"),
-        print_position: EntitySystem<TestComponents, PrintPosition> = EntitySystem::new(PrintPosition,
+        print_position: EntitySystem<PrintPosition> = EntitySystem::new(PrintPosition,
                 aspect!(<TestComponents>
                     all: [position, feature]
                 )
@@ -44,17 +45,17 @@ systems! {
 }
 
 pub struct HelloWorld(&'static str);
-impl Process<TestComponents> for HelloWorld
+impl Process for HelloWorld
 {
     fn process(&mut self, _: &mut DataHelper<TestComponents>)
     {
         println!("{}", self.0);
     }
 }
-impl System<TestComponents> for HelloWorld {}
+impl System for HelloWorld { type Components = TestComponents; }
 
 pub struct PrintPosition;
-impl EntityProcess<TestComponents> for PrintPosition
+impl EntityProcess for PrintPosition
 {
     fn process(&mut self, en: EntityIter<TestComponents>, co: &mut DataHelper<TestComponents>)
     {
@@ -64,7 +65,8 @@ impl EntityProcess<TestComponents> for PrintPosition
         }
     }
 }
-impl System<TestComponents> for PrintPosition {
+impl System for PrintPosition {
+    type Components = TestComponents;
     fn is_active(&self) -> bool { false }
 }
 
