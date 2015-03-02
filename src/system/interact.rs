@@ -42,7 +42,7 @@ impl<T: InteractProcess> InteractSystem<T>
 impl<T: InteractProcess> System for InteractSystem<T>
 {
     type Components = <T as System>::Components;
-    fn activated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn activated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.aspect_a.check(entity, world)
         {
@@ -56,7 +56,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn reactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.interested_a.contains(&**entity)
         {
@@ -94,7 +94,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn deactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.interested_a.remove(&**entity)
         {

@@ -61,7 +61,7 @@ impl EntityProcess for PrintPosition
     {
         for e in en
         {
-            println!("{:?}", e.borrow(&mut co.position));
+            println!("{:?}", co.position.borrow(&e));
         }
     }
 }
@@ -76,43 +76,43 @@ fn test_general_1()
     let mut world = World::<TestComponents, TestSystems>::new();
 
     // Test entity builders
-    let entity = world.create_entity(box |e: BuildData<_>, c: &mut TestComponents| {
-        e.insert(&mut c.position, Position { x: 0.5, y: 0.7 });
-        e.insert(&mut c.team, Team(4));
+    let entity = world.create_entity(box |e: BuildData, c: &mut TestComponents| {
+        c.position.add(&e, Position { x: 0.5, y: 0.7 });
+        c.team.add(&e, Team(4));
     });
-    world.create_entity(box |e: BuildData<_>, c: &mut TestComponents| {
-        e.insert(&mut c.position, Position { x: 0.6, y: 0.8 });
-        e.insert(&mut c.team, Team(3));
-        e.insert(&mut c.feature, SomeFeature);
+    world.create_entity(box |e: BuildData, c: &mut TestComponents| {
+        c.position.add(&e, Position { x: 0.6, y: 0.8 });
+        c.team.add(&e, Team(3));
+        c.feature.add(&e, SomeFeature);
     });
 
     // Test passive systems
     world.systems.print_position.process(&mut world.data);
 
     // Test entity modifiers
-    world.modify_entity(entity, box |e: ModifyData<_>, c: &mut TestComponents| {
-        assert_eq!(Some(Position { x: 0.5, y: 0.7 }), e.insert(&mut c.position, Position { x: -2.5, y: 7.6 }));
-        assert_eq!(Some(Team(4)), e.remove(&mut c.team));
-        assert!(!e.has(&mut c.feature));
-        assert!(e.insert(&mut c.feature, SomeFeature).is_none());
+    world.modify_entity(entity, box |e: ModifyData, c: &mut TestComponents| {
+        assert_eq!(Some(Position { x: 0.5, y: 0.7 }), c.position.insert(&e, Position { x: -2.5, y: 7.6 }));
+        assert_eq!(Some(Team(4)), c.team.remove(&e));
+        assert!(!c.feature.has(&e));
+        assert!(c.feature.insert(&e, SomeFeature).is_none());
     });
     world.systems.print_position.process(&mut world.data);
-    world.modify_entity(entity, box |e: ModifyData<_>, c: &mut TestComponents| {
-        assert_eq!(Some(Position { x: -2.5, y: 7.6 }), e.get(&mut c.position));
-        assert_eq!(None, e.remove(&mut c.team));
-        assert!(e.insert(&mut c.feature, SomeFeature).is_some());
+    world.modify_entity(entity, box |e: ModifyData, c: &mut TestComponents| {
+        assert_eq!(Position { x: -2.5, y: 7.6 }, c.position[e]);
+        assert_eq!(None, c.team.remove(&e));
+        assert!(c.feature.insert(&e, SomeFeature).is_some());
     });
 
     // Test external entity iterator
     for e in world.entities()
     {
-        assert!(e.has(&world.position));
+        assert!(world.position.has(&e));
     }
 
     // Test external entity iterator with aspect filtering
     for e in world.entities().filter(aspect!(<TestComponents> all: [team]), &world)
     {
-        assert!(e.has(&world.team));
+        assert!(world.team.has(&e));
     }
 
     // Test active systems

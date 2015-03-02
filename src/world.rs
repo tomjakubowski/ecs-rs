@@ -1,5 +1,4 @@
 
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use {BuildData, EntityData, ModifyData};
@@ -37,9 +36,9 @@ pub unsafe trait SystemManager: 'static
 {
     type Components: ComponentManager;
     unsafe fn new() -> Self;
-    unsafe fn activated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
-    unsafe fn reactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
-    unsafe fn deactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
+    unsafe fn activated(&mut self, en: EntityData, co: &Self::Components);
+    unsafe fn reactivated(&mut self, en: EntityData, co: &Self::Components);
+    unsafe fn deactivated(&mut self, en: EntityData, co: &Self::Components);
     unsafe fn update(&mut self, co: &mut DataHelper<Self::Components>);
 }
 
@@ -80,10 +79,10 @@ impl<T: ComponentManager> DerefMut for DataHelper<T>
 impl<T: ComponentManager> DataHelper<T>
 {
     pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
-        where F: FnMut(EntityData<T>, &mut DataHelper<T>) -> R
+        where F: FnMut(EntityData, &mut T) -> R
     {
         if self.entities.is_valid(entity) {
-            Some(call(EntityData(entity, PhantomData::<fn(T)>), self))
+            Some(call(EntityData(entity), self))
         } else {
             None
         }
@@ -124,16 +123,16 @@ impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
     pub fn create_entity<'a>(&mut self, mut builder: Box<EntityBuilder<T>+'a>) -> Entity
     {
         let entity = self.data.entities.create();
-        builder.build(BuildData(&entity, PhantomData::<fn(T)>), &mut self.data.components);
-        unsafe { self.systems.activated(EntityData(&entity, PhantomData::<fn(T)>), &self.data.components); }
+        builder.build(BuildData(&entity), &mut self.data.components);
+        unsafe { self.systems.activated(EntityData(&entity), &self.data.components); }
         entity
     }
 
     pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
-        where F: FnMut(EntityData<T>, &mut DataHelper<T>) -> R
+        where F: FnMut(EntityData, &mut T) -> R
     {
         if self.data.entities.is_valid(entity) {
-            Some(call(EntityData(entity, PhantomData::<fn(T)>), &mut self.data))
+            Some(call(EntityData(entity), &mut self.data))
         } else {
             None
         }
@@ -180,16 +179,16 @@ fn process_event<T: ComponentManager, U: SystemManager<Components=T>>(components
     match event
     {
         Event::BuildEntity(entity, mut builder) => {
-            builder.build(BuildData(&entity, PhantomData::<fn(T)>), components);
-            unsafe { systems.activated(EntityData(&entity, PhantomData::<fn(T)>), components); }
+            builder.build(BuildData(&entity), components);
+            unsafe { systems.activated(EntityData(&entity), components); }
         },
         Event::ModifyEntity(entity, mut modifier) => {
-            modifier.modify(ModifyData(&entity, PhantomData::<fn(T)>), components);
-            unsafe { systems.reactivated(EntityData(&entity, PhantomData::<fn(T)>), components); }
+            modifier.modify(ModifyData(&entity), components);
+            unsafe { systems.reactivated(EntityData(&entity), components); }
         },
         Event::RemoveEntity(entity) => {
             unsafe {
-                systems.deactivated(EntityData(&entity, PhantomData::<fn(T)>), components);
+                systems.deactivated(EntityData(&entity), components);
                 components.remove_all(&entity);
             }
             entities.remove(&entity);

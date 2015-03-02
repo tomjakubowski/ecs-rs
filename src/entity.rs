@@ -97,17 +97,17 @@ impl<'a, T: ComponentManager> EntityIter<'a, T>
 
 impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
 {
-    type Item = EntityData<'a, T>;
-    fn next(&mut self) -> Option<EntityData<'a, T>>
+    type Item = EntityData<'a>;
+    fn next(&mut self) -> Option<EntityData<'a>>
     {
-        self.inner.next().map(|x| EntityData(x, self.__phantom))
+        self.inner.next().map(|x| EntityData(x))
     }
 }
 
 impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
 {
-    type Item = EntityData<'a, T>;
-    fn next(&mut self) -> Option<EntityData<'a, T>>
+    type Item = EntityData<'a>;
+    fn next(&mut self) -> Option<EntityData<'a>>
     {
         for x in self.inner.by_ref()
         {

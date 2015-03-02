@@ -41,7 +41,6 @@ pub use entity::{Entity, EntityIter};
 pub use system::{System, Process};
 pub use world::{ComponentManager, SystemManager, DataHelper, World};
 
-use std::marker::PhantomData;
 use std::ops::{Deref};
 
 pub mod aspect;
@@ -50,69 +49,30 @@ pub mod entity;
 pub mod system;
 pub mod world;
 
-pub struct BuildData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
+// Add        | Build
+// Insert     | Modify
+// Remove     | Modify
+// Get    (I) | Modify/Process = EditData
+// Has        | Modify/Process = EditData
+// Set    (I) | Modify/Process = EditData
+// Borrow (I) | Process
 
-impl<'a, T: ComponentManager> BuildData<'a, T>
-{
-    pub fn insert<U: Component>(&self, c: &mut ComponentList<U>, component: U) -> Option<U>
-    {
-        unsafe { c.insert(self.0, component) }
-    }
-}
-
-pub struct ModifyData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
-
-impl<'a, T: ComponentManager> ModifyData<'a, T>
-{
-    pub fn insert<U: Component>(&self, c: &mut ComponentList<U>, component: U) -> Option<U>
-    {
-        unsafe { c.insert(self.0, component) }
-    }
-
-    pub fn get<U: Component>(&self, c: &ComponentList<U>) -> Option<U> where U: Clone
-    {
-        unsafe { c.get(self.0) }
-    }
-
-    pub fn has<U: Component>(&self, c: &ComponentList<U>) -> bool
-    {
-        unsafe { c.has(self.0) }
-    }
-
-    pub fn remove<U: Component>(&self, c: &mut ComponentList<U>) -> Option<U>
-    {
-        unsafe { c.remove(self.0) }
-    }
-}
-
-pub struct EntityData<'a, T: ComponentManager>(&'a Entity, PhantomData<fn(T)>);
-
-impl<'a, T: ComponentManager> Deref for EntityData<'a, T>
+pub struct BuildData<'a>(&'a Entity);
+pub struct ModifyData<'a>(&'a Entity);
+pub struct EntityData<'a>(&'a Entity);
+impl<'a> Deref for EntityData<'a>
 {
     type Target = Entity;
     fn deref(&self) -> &Entity
     {
-        self.0
+        &self.0
     }
 }
 
-impl<'a, T: ComponentManager> EntityData<'a, T>
-{
-    pub fn get<U: Component>(&self, c: &ComponentList<U>) -> Option<U> where U: Clone
-    {
-        unsafe { c.get(self.0) }
-    }
-
-    pub fn borrow<'b, U: Component>(&self, c: &'b mut ComponentList<U>) -> Option<&'b mut U>
-    {
-        unsafe { c.borrow(self.0) }
-    }
-
-    pub fn has<U: Component>(&self, c: &ComponentList<U>) -> bool
-    {
-        unsafe { c.has(self.0) }
-    }
-}
+#[doc(hidden)]
+pub unsafe trait EditData { fn entity(&self) -> &Entity; }
+unsafe impl<'a> EditData for ModifyData<'a> { fn entity(&self) -> &Entity { &self.0 } }
+unsafe impl<'a> EditData for EntityData<'a> { fn entity(&self) -> &Entity { &self.0 } }
 
 #[macro_use]
 mod macros
@@ -144,7 +104,7 @@ mod macros
         } => {
             pub struct $Name {
                 $(
-                    $field_name : $crate::ComponentList<$field_ty>,
+                    pub $field_name : $crate::ComponentList<$field_ty>,
                 )+
             }
 
@@ -162,7 +122,7 @@ mod macros
                 unsafe fn remove_all(&mut self, entity: &$crate::Entity)
                 {
                     $(
-                        self.$field_name.remove(entity);
+                        self.$field_name.clear(entity);
                     )+
                 }
             }
@@ -185,17 +145,17 @@ mod macros
                     $Name
                 }
 
-                unsafe fn activated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn activated(&mut self, _: $crate::EntityData, _: &$components)
                 {
 
                 }
 
-                unsafe fn reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn reactivated(&mut self, _: $crate::EntityData, _: &$components)
                 {
 
                 }
 
-                unsafe fn deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn deactivated(&mut self, _: $crate::EntityData, _: &$components)
                 {
 
                 }
@@ -213,7 +173,7 @@ mod macros
         } => {
             pub struct $Name {
                 $(
-                    $field_name : $field_ty,
+                    pub $field_name : $field_ty,
                 )+
             }
 
@@ -230,21 +190,21 @@ mod macros
                     }
                 }
 
-                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn activated(&mut self, en: $crate::EntityData, co: &$components)
                 {
                     $(
                         self.$field_name.activated(&en, co);
                     )+
                 }
 
-                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn reactivated(&mut self, en: $crate::EntityData, co: &$components)
                 {
                     $(
                         self.$field_name.reactivated(&en, co);
                     )+
                 }
 
-                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn deactivated(&mut self, en: $crate::EntityData, co: &$components)
                 {
                     $(
                         self.$field_name.deactivated(&en, co);
@@ -271,9 +231,9 @@ mod macros
             none: [$($none_field:ident),*]
         } => {
             unsafe {
-                Aspect::new(box |en: &$crate::EntityData<$components>, co: &$components| {
-                    ($(en.has(&co.$all_field) &&)* true) &&
-                    !($(en.has(&co.$none_field) ||)* false)
+                $crate::Aspect::new(box |en: &$crate::EntityData, co: &$components| {
+                    ($(co.$all_field.has(en) &&)* true) &&
+                    !($(co.$none_field.has(en) ||)* false)
                 })
             }
         };

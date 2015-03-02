@@ -4,9 +4,9 @@ use std::ops::{Index, IndexMut};
 
 use self::InnerComponentList::{Hot, Cold};
 
-use {BuildData, ModifyData};
-use ComponentManager;
+use {BuildData, EditData, ModifyData};
 use Entity;
+use ComponentManager;
 
 pub trait Component: 'static {}
 
@@ -32,128 +32,130 @@ impl<T: Component> ComponentList<T>
         ComponentList(Cold(HashMap::new()))
     }
 
-    pub unsafe fn insert(&mut self, entity: &Entity, component: T) -> Option<T>
+    pub fn add(&mut self, entity: &BuildData, component: T) -> Option<T>
     {
         match self.0
         {
-            Hot(ref mut c) => c.insert(**entity, component),
-            Cold(ref mut c) => c.insert(**entity, component),
+            Hot(ref mut c) => c.insert(**entity.0, component),
+            Cold(ref mut c) => c.insert(**entity.0, component),
         }
     }
 
-    pub unsafe fn remove(&mut self, entity: &Entity) -> Option<T>
+    pub fn insert(&mut self, entity: &ModifyData, component: T) -> Option<T>
     {
         match self.0
         {
-            Hot(ref mut c) => c.remove(&**entity),
-            Cold(ref mut c) => c.remove(&**entity),
+            Hot(ref mut c) => c.insert(**entity.entity(), component),
+            Cold(ref mut c) => c.insert(**entity.entity(), component),
         }
     }
 
-    pub unsafe fn get(&self, entity: &Entity) -> Option<T> where T: Clone
+    pub fn remove(&mut self, entity: &ModifyData) -> Option<T>
     {
         match self.0
         {
-            Hot(ref c) => c.get(&**entity).cloned(),
-            Cold(ref c) => c.get(&**entity).cloned(),
+            Hot(ref mut c) => c.remove(entity.entity()),
+            Cold(ref mut c) => c.remove(entity.entity()),
         }
     }
 
-    pub unsafe fn has(&self, entity: &Entity) -> bool
+    pub fn set(&mut self, entity: &EditData, component: T) -> Option<T>
     {
         match self.0
         {
-            Hot(ref c) => c.contains_key(&**entity),
-            Cold(ref c) => c.contains_key(&**entity),
+            Hot(ref mut c) => c.insert(**entity.entity(), component),
+            Cold(ref mut c) => c.insert(**entity.entity(), component),
         }
     }
 
-    pub unsafe fn borrow(&mut self, entity: &Entity) -> Option<&mut T>
+    pub fn get(&self, entity: &EditData) -> Option<T> where T: Clone
     {
         match self.0
         {
-            Hot(ref mut c) => c.get_mut(&**entity),
-            Cold(ref mut c) => c.get_mut(&**entity),
+            Hot(ref c) => c.get(entity.entity()).cloned(),
+            Cold(ref c) => c.get(entity.entity()).cloned(),
+        }
+    }
+
+    pub fn has(&self, entity: &EditData) -> bool
+    {
+        match self.0
+        {
+            Hot(ref c) => c.contains_key(entity.entity()),
+            Cold(ref c) => c.contains_key(entity.entity()),
+        }
+    }
+
+    pub fn borrow(&mut self, entity: &EditData) -> Option<&mut T>
+    {
+        match self.0
+        {
+            Hot(ref mut c) => c.get_mut(entity.entity()),
+            Cold(ref mut c) => c.get_mut(entity.entity()),
+        }
+    }
+
+    pub unsafe fn clear(&mut self, entity: &Entity)
+    {
+        match self.0
+        {
+            Hot(ref mut c) => c.remove(entity),
+            Cold(ref mut c) => c.remove(entity),
+        };
+    }
+}
+
+impl<T: Component, U: EditData> Index<U> for ComponentList<T>
+{
+    type Output = T;
+    fn index(&self, en: &U) -> &T
+    {
+        match self.0
+        {
+            Hot(ref c) => &c[**en.entity()],
+            Cold(ref c) => &c[**en.entity()],
+        }
+    }
+}
+
+impl<T: Component, U: EditData> IndexMut<U> for ComponentList<T>
+{
+    fn index_mut(&mut self, en: &U) -> &mut T
+    {
+        match self.0
+        {
+            Hot(ref mut c) => &mut c[**en.entity()],
+            Cold(ref mut c) => &mut c[**en.entity()],
         }
     }
 }
 
 pub trait EntityBuilder<T: ComponentManager>
 {
-    fn build<'a>(&mut self, BuildData<'a, T>, &mut T);
+    fn build<'a>(&mut self, BuildData<'a>, &mut T);
 }
 
-impl<T: ComponentManager, F> EntityBuilder<T> for F where F: FnMut(BuildData<T>, &mut T)
+impl<T: ComponentManager, F> EntityBuilder<T> for F where F: FnMut(BuildData, &mut T)
 {
-    fn build(&mut self, e: BuildData<T>, c: &mut T)
+    fn build(&mut self, e: BuildData, c: &mut T)
     {
         (*self)(e, c);
     }
 }
 
-impl<T: ComponentManager> EntityBuilder<T> for () { fn build(&mut self, _: BuildData<T>, _: &mut T) {} }
+impl<T: ComponentManager> EntityBuilder<T> for () { fn build(&mut self, _: BuildData, _: &mut T) {} }
 
 pub trait EntityModifier<T: ComponentManager>
 {
-    fn modify<'a>(&mut self, ModifyData<'a, T>, &mut T);
+    fn modify<'a>(&mut self, ModifyData<'a>, &mut T);
 }
 
-impl<T: ComponentManager, F> EntityModifier<T> for F where F: FnMut(ModifyData<T>, &mut T)
+impl<T: ComponentManager, F> EntityModifier<T> for F where F: FnMut(ModifyData, &mut T)
 {
-    fn modify(&mut self, e: ModifyData<T>, c: &mut T)
+    fn modify(&mut self, e: ModifyData, c: &mut T)
     {
         (*self)(e, c);
     }
 }
 
-impl<T: ComponentManager> EntityModifier<T> for () { fn modify(&mut self, _: ModifyData<T>, _: &mut T) {} }
-
-impl<T: Component> Index<usize> for ComponentList<T>
-{
-    type Output = T;
-    fn index(&self, index: &usize) -> &T
-    {
-        match self.0
-        {
-            Hot(ref c) => &c[*index],
-            Cold(ref c) => &c[*index],
-        }
-    }
-}
-
-impl<T: Component> IndexMut<usize> for ComponentList<T>
-{
-    fn index_mut(&mut self, index: &usize) -> &mut T
-    {
-        match self.0
-        {
-            Hot(ref mut c) => &mut c[*index],
-            Cold(ref mut c) => &mut c[*index],
-        }
-    }
-}
-
-impl<T: Component> Index<Entity> for ComponentList<T>
-{
-    type Output = T;
-    fn index(&self, index: &Entity) -> &T
-    {
-        match self.0
-        {
-            Hot(ref c) => &c[**index],
-            Cold(ref c) => &c[**index],
-        }
-    }
-}
-
-impl<T: Component> IndexMut<Entity> for ComponentList<T>
-{
-    fn index_mut(&mut self, index: &Entity) -> &mut T
-    {
-        match self.0
-        {
-            Hot(ref mut c) => &mut c[**index],
-            Cold(ref mut c) => &mut c[**index],
-        }
-    }
-}
+impl<T: ComponentManager> EntityModifier<T> for () { fn modify(&mut self, _: ModifyData, _: &mut T) {} }

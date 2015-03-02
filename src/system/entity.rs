@@ -2,6 +2,7 @@
 //! Systems to specifically deal with entities.
 
 use std::collections::HashSet;
+use std::ops::{Deref, DerefMut};
 
 use Aspect;
 use DataHelper;
@@ -35,10 +36,27 @@ impl<T: EntityProcess> EntitySystem<T>
     }
 }
 
+impl<T: EntityProcess> Deref for EntitySystem<T>
+{
+    type Target = T;
+    fn deref(&self) -> &T
+    {
+        &self.inner
+    }
+}
+
+impl<T: EntityProcess> DerefMut for EntitySystem<T>
+{
+    fn deref_mut(&mut self) -> &mut T
+    {
+        &mut self.inner
+    }
+}
+
 impl<T: EntityProcess> System for EntitySystem<T>
 {
     type Components = <T as System>::Components;
-    fn activated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn activated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.aspect.check(entity, world)
         {
@@ -47,7 +65,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn reactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.interested.contains(&**entity)
         {
@@ -68,7 +86,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData<<T as System>::Components>, world: &<T as System>::Components)
+    fn deactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
     {
         if self.interested.remove(&**entity)
         {

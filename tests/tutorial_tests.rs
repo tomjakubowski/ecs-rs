@@ -43,10 +43,10 @@ pub mod chapter3
 
 pub mod chapter4
 {
-    use ecs::BuildData;
+    use ecs::{BuildData, ModifyData};
     use ecs::World;
 
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     pub struct Position {
         x: f32,
         y: f32,
@@ -67,10 +67,25 @@ pub mod chapter4
     fn test() {
         let mut world = World::<MyComponents, MySystems>::new();
 
-        let _ = world.create_entity(Box::new(
-            |entity: BuildData<_>, data: &mut MyComponents| {
-                entity.insert(&mut data.position, Position { x: 0.0, y: 0.0 });
-                entity.insert(&mut data.respawn, Position { x: 0.0, y: 0.0 });
+        let entity = world.create_entity(Box::new(
+            |entity: BuildData, data: &mut MyComponents| {
+                data.position.add(&entity, Position { x: 0.0, y: 0.0 });
+                data.respawn.add(&entity, Position { x: 0.0, y: 0.0 });
+            }
+        ));
+
+        world.with_entity_data(&entity, |entity, data| {
+            data.position[entity].x += 5.0;
+            data.position[entity].y += 8.0;
+        });
+
+        world.modify_entity(entity, Box::new(
+            |entity: ModifyData, data: &mut MyComponents| {
+                data.respawn[entity].x -= 4.0;
+                data.position[entity] = data.respawn[entity];
+                data.respawn.remove(&entity);
+                assert_eq!(data.respawn.get(&entity), None);
+                data.respawn.insert(&entity, Position { x: 1.0, y: 2.0});
             }
         ));
     }
