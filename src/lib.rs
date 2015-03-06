@@ -49,14 +49,6 @@ pub mod entity;
 pub mod system;
 pub mod world;
 
-// Add        | Build
-// Insert     | Modify
-// Remove     | Modify
-// Get    (I) | Modify/Process = EditData
-// Has        | Modify/Process = EditData
-// Set    (I) | Modify/Process = EditData
-// Borrow (I) | Process
-
 pub struct BuildData<'a>(&'a Entity);
 pub struct ModifyData<'a>(&'a Entity);
 pub struct EntityData<'a>(&'a Entity);
@@ -77,6 +69,15 @@ unsafe impl<'a> EditData for EntityData<'a> { fn entity(&self) -> &Entity { &sel
 #[macro_use]
 mod macros
 {
+    #[macro_export]
+    macro_rules! process {
+        {
+            $world:ident, $system:ident
+        } => {
+            $crate::Process::process(&mut $world.systems.$system, &mut $world.data)
+        };
+    }
+
     #[macro_export]
     macro_rules! components {
         {
@@ -215,7 +216,7 @@ mod macros
                 {
                     $(
                         if self.$field_name.is_active() {
-                            self.$field_name.process(co);
+                            $crate::Process::process(&mut self.$field_name, co);
                         }
                     )+
                 }

@@ -5,8 +5,7 @@
 #[macro_use]
 extern crate ecs;
 
-pub mod chapter2
-{
+pub mod chapter2 {
     use ecs::World;
 
     components! {
@@ -23,9 +22,9 @@ pub mod chapter2
     }
 }
 
-pub mod chapter3
-{
+pub mod chapter3 {
     use ecs::World;
+
     use chapter2::{MyComponents, MySystems};
 
     #[test]
@@ -41,15 +40,14 @@ pub mod chapter3
     }
 }
 
-pub mod chapter4
-{
+pub mod chapter4 {
     use ecs::{BuildData, ModifyData};
     use ecs::World;
 
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub struct Position {
-        x: f32,
-        y: f32,
+        pub x: f32,
+        pub y: f32,
     }
 
     components! {
@@ -88,5 +86,102 @@ pub mod chapter4
                 data.respawn.insert(&entity, Position { x: 1.0, y: 2.0});
             }
         ));
+    }
+}
+
+pub mod chapter5 {
+    use ecs::system::{Process, System};
+    use ecs::{DataHelper, World};
+
+    use chapter2::MyComponents;
+
+    pub struct PrintMessage(pub String);
+    impl System for PrintMessage {
+        type Components = MyComponents;
+        fn is_active(&self) -> bool { false }
+    }
+    impl Process for PrintMessage {
+        fn process(&mut self, _: &mut DataHelper<MyComponents>) {
+            println!("{}", &self.0);
+        }
+    }
+
+    systems! {
+        MySystems<MyComponents> {
+            print_msg: PrintMessage = PrintMessage("Hello World".to_string())
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut world = World::<MyComponents, MySystems>::new();
+
+        world.update(); // Doesn't print anything because we the system is passive.
+        world.systems.print_msg.0 = "Goodbye World".to_string();
+        world.systems.print_msg.process(&mut world.data); // "Goodbye World"
+        process!(world, print_msg); // "Goodbye World"
+    }
+}
+
+pub mod chapter6 {
+    use ecs::system::{EntityProcess, EntitySystem, System};
+    use ecs::{DataHelper, EntityIter, World};
+    use ecs::{BuildData, EntityData};
+
+    use chapter4::Position;
+
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub struct Velocity {
+        pub dx: f32,
+        pub dy: f32,
+    }
+
+    components! {
+        MyComponents {
+            #[hot] position: Position,
+            #[hot] velocity: Velocity
+        }
+    }
+
+    pub struct MotionProcess;
+    impl System for MotionProcess { type Components = MyComponents; }
+    impl EntityProcess for MotionProcess {
+        fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents>) {
+            for e in entities {
+                let mut position = data.position[e];
+                let velocity = data.velocity[e];
+                position.x += velocity.dx;
+                position.y += velocity.dy;
+                data.position[e] = position;
+            }
+        }
+    }
+
+    systems! {
+        MySystems<MyComponents> {
+            motion: EntitySystem<MotionProcess> = EntitySystem::new(MotionProcess, aspect!(<MyComponents> all: [position, velocity]))
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut world = World::<MyComponents, MySystems>::new();
+
+        let entity = world.create_entity(Box::new(
+            |entity: BuildData, data: &mut MyComponents| {
+                data.position.add(&entity, Position { x: 0.0, y: 0.0 });
+                data.velocity.add(&entity, Velocity { dx: 1.0, dy: 0.0 });
+            }
+        ));
+
+        world.with_entity_data(&entity, |en: EntityData, co: &mut MyComponents|
+            assert_eq!(Position { x: 0.0, y: 0.0 }, co.position[en])
+        );
+
+        world.update();
+
+        world.with_entity_data(&entity, |en: EntityData, co: &mut MyComponents|
+            assert_eq!(Position { x: 1.0, y: 0.0 }, co.position[en])
+        );
     }
 }

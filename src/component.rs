@@ -59,7 +59,7 @@ impl<T: Component> ComponentList<T>
         }
     }
 
-    pub fn set(&mut self, entity: &EditData, component: T) -> Option<T>
+    pub fn set<U: EditData>(&mut self, entity: &U, component: T) -> Option<T>
     {
         match self.0
         {
@@ -68,7 +68,7 @@ impl<T: Component> ComponentList<T>
         }
     }
 
-    pub fn get(&self, entity: &EditData) -> Option<T> where T: Clone
+    pub fn get<U: EditData>(&self, entity: &U) -> Option<T> where T: Clone
     {
         match self.0
         {
@@ -77,7 +77,7 @@ impl<T: Component> ComponentList<T>
         }
     }
 
-    pub fn has(&self, entity: &EditData) -> bool
+    pub fn has<U: EditData>(&self, entity: &U) -> bool
     {
         match self.0
         {
@@ -86,7 +86,7 @@ impl<T: Component> ComponentList<T>
         }
     }
 
-    pub fn borrow(&mut self, entity: &EditData) -> Option<&mut T>
+    pub fn borrow<U: EditData>(&mut self, entity: &U) -> Option<&mut T>
     {
         match self.0
         {

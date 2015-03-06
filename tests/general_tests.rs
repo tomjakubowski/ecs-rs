@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate ecs;
 
-use ecs::Aspect;
 use ecs::{BuildData, ModifyData};
 use ecs::{World, DataHelper};
 use ecs::{Process, System};
