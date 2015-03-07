@@ -72,7 +72,7 @@ mod macros
     #[macro_export]
     macro_rules! process {
         {
-            $world:ident, $system:ident
+            $world:expr, $system:ident
         } => {
             $crate::Process::process(&mut $world.systems.$system, &mut $world.data)
         };
