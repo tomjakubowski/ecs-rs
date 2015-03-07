@@ -1,6 +1,4 @@
 
-#![feature(box_syntax)]
-
 #[macro_use]
 extern crate ecs;
 
@@ -75,11 +73,11 @@ fn test_general_1()
     let mut world = World::<TestComponents, TestSystems>::new();
 
     // Test entity builders
-    let entity = world.create_entity(box |e: BuildData, c: &mut TestComponents| {
+    let entity = world.create_entity(|e: BuildData, c: &mut TestComponents| {
         c.position.add(&e, Position { x: 0.5, y: 0.7 });
         c.team.add(&e, Team(4));
     });
-    world.create_entity(box |e: BuildData, c: &mut TestComponents| {
+    world.create_entity(|e: BuildData, c: &mut TestComponents| {
         c.position.add(&e, Position { x: 0.6, y: 0.8 });
         c.team.add(&e, Team(3));
         c.feature.add(&e, SomeFeature);
@@ -89,14 +87,14 @@ fn test_general_1()
     world.systems.print_position.process(&mut world.data);
 
     // Test entity modifiers
-    world.modify_entity(entity, box |e: ModifyData, c: &mut TestComponents| {
+    world.modify_entity(entity, |e: ModifyData, c: &mut TestComponents| {
         assert_eq!(Some(Position { x: 0.5, y: 0.7 }), c.position.insert(&e, Position { x: -2.5, y: 7.6 }));
         assert_eq!(Some(Team(4)), c.team.remove(&e));
         assert!(!c.feature.has(&e));
         assert!(c.feature.insert(&e, SomeFeature).is_none());
     });
     world.systems.print_position.process(&mut world.data);
-    world.modify_entity(entity, box |e: ModifyData, c: &mut TestComponents| {
+    world.modify_entity(entity, |e: ModifyData, c: &mut TestComponents| {
         assert_eq!(Position { x: -2.5, y: 7.6 }, c.position[e]);
         assert_eq!(None, c.team.remove(&e));
         assert!(c.feature.insert(&e, SomeFeature).is_some());

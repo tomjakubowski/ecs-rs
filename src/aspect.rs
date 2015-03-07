@@ -7,12 +7,12 @@ impl<T: ComponentManager> Aspect<T>
 {
     pub fn all() -> Aspect<T>
     {
-        Aspect(box |_, _| true)
+        Aspect(Box::new(|_, _| true))
     }
 
     pub fn none() -> Aspect<T>
     {
-        Aspect(box |_, _| false)
+        Aspect(Box::new(|_, _| false))
     }
 
     pub unsafe fn new(inner: Box<Fn(&EntityData, &T) -> bool + 'static>) -> Aspect<T>

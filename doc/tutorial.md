@@ -68,13 +68,13 @@ That's all it takes to create a world object. Admittedly, what we have here is a
 Let's move on to putting entities into our world.
 
 ## 3. Adding Entities
-Entities are added to the world by using `World.create_entity(Box<EntityBuilder>)`. EntityBuilder is implemented for `FnMut(BuildData<T>, &mut T) where T: ComponentManager`, as well as `()` for entities that don't need any data. You can also create custom implementations, but usually closures should be plenty.
+Entities are added to the world by using `World.create_entity(EntityBuilder)`. EntityBuilder is implemented for `FnMut(BuildData<T>, &mut T) where T: ComponentManager`, as well as `()` for entities that don't need any data. You can also create custom implementations, but usually closures should be plenty.
 
 (We'll have a closer look at `BuildData` later)
 
 Since we don't have any components available, we'll just use `()`:
 ```rust
-let entity = world.create_entity(Box::new(()));
+let entity = world.create_entity(());
 ```
 Yay! Now we have an entity. Remember that an entity is just an identifier. Let's have a closer look:
 ```rust
@@ -84,7 +84,7 @@ As you can see Entity is made up of two numbers, more specifically a `usize` and
 This value is unique, as can be seen here:
 ```rust
 world.remove_entity(entity);
-let entity2 = world.create_entity(Box::new(()));
+let entity2 = world.create_entity(());
 assert!(entity != entity2);
 println!("{:?}", entity2);
 ```
@@ -134,12 +134,12 @@ Because the respawn data is used very rarely (only when an entity respawns), it'
 ## 4b. Adding Components to an Entity
 To add components to entities we're going to have to use a proper `EntityBuilder`.
 ```rust
-let entity = world.create_entity(Box::new(
+let entity = world.create_entity(
     |entity: BuildData, data: &mut MyComponents| {
         data.position.add(&entity, Position { x: 0.0, y: 0.0 });
         data.respawn.add(&entity, Position { x: 0.0, y: 0.0 });
     }
-));
+);
 ```
 
 ## 4c. Modifying an Entity's Components
@@ -157,7 +157,7 @@ world.with_entity_data(&entity, |entity, data| {
 ### Changing components
 To modify an entity's 'aspect' (it's set of active components), you have to use an `EntityModifier`, which is practically the same as an `EntityBuilder`, except you can modify existing data as well as add new components.
 ```rust
-world.modify_entity(entity, Box::new(
+world.modify_entity(entity,
     |entity: ModifyData, data: &mut MyComponents| {
         data.respawn[entity].x -= 4.0;
         data.position[entity] = data.respawn[entity];
@@ -165,7 +165,7 @@ world.modify_entity(entity, Box::new(
         assert_eq!(data.respawn.get(&entity), None);
         data.respawn.insert(&entity, Position { x: 1.0, y: 2.0});
     }
-));
+);
 ```
 
 Now that we have entities and components, it's time to look at systems.
@@ -338,12 +338,12 @@ More complicated functionality for aspects may be available in the future, but f
 ### Testing the system
 Just to check the systems works, let's create an entity:
 ```rust
-let entity = world.create_entity(Box::new(
+let entity = world.create_entity(
     |entity: BuildData, data: &mut MyComponents| {
         data.position.add(&entity, Position { x: 0.0, y: 0.0 });
         data.velocity.add(&entity, Velocity { dx: 1.0, dy: 0.0 });
     }
-));
+);
 ```
 And call `world.update()`
 ```rust

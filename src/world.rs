@@ -88,16 +88,16 @@ impl<T: ComponentManager> DataHelper<T>
         }
     }
 
-    pub fn create_entity(&mut self, builder: Box<EntityBuilder<T>+'static>) -> Entity
+    pub fn create_entity<B>(&mut self, builder: B) -> Entity where B: EntityBuilder<T>+'static
     {
         let entity = self.entities.create();
-        self.event_queue.push(Event::BuildEntity(entity, builder));
+        self.event_queue.push(Event::BuildEntity(entity, Box::new(builder)));
         entity
     }
 
-    pub fn modify_entity(&mut self, entity: Entity, modifier: Box<EntityModifier<T>+'static>)
+    pub fn modify_entity<M>(&mut self, entity: Entity, modifier: M) where M: EntityModifier<T>+'static
     {
-        self.event_queue.push(Event::ModifyEntity(entity, modifier));
+        self.event_queue.push(Event::ModifyEntity(entity, Box::new(modifier)));
     }
 
     pub fn remove_entity(&mut self, entity: Entity)
@@ -120,7 +120,7 @@ impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
         }
     }
 
-    pub fn create_entity<'a>(&mut self, mut builder: Box<EntityBuilder<T>+'a>) -> Entity
+    pub fn create_entity<B>(&mut self, mut builder: B) -> Entity where B: EntityBuilder<T>
     {
         let entity = self.data.entities.create();
         builder.build(BuildData(&entity), &mut self.data.components);
@@ -143,9 +143,10 @@ impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
         self.data.entities.iter()
     }
 
-    pub fn modify_entity(&mut self, entity: Entity, modifier: Box<EntityModifier<T>+'static>)
+    pub fn modify_entity<M>(&mut self, entity: Entity, mut modifier: M) where M: EntityModifier<T>
     {
-        self.process_event(Event::ModifyEntity(entity, modifier));
+        modifier.modify(ModifyData(&entity), &mut self.data.components);
+        unsafe { self.systems.reactivated(EntityData(&entity), &self.data.components); }
     }
 
     pub fn remove_entity(&mut self, entity: Entity)

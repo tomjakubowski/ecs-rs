@@ -29,7 +29,6 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(box_syntax)]
 #![feature(core)]
 #![feature(collections)]
 #![feature(std_misc)]
@@ -128,6 +127,13 @@ mod macros
                 }
             }
         };
+        {
+            $Name:ident {
+                $(#[$kind:ident] $field_name:ident : $field_ty:ty),+,
+            }
+        } => {
+            components! { $Name { $(#[$kind] $field_name : $field_ty),+ } }
+        };
     }
 
     #[macro_export]
@@ -222,6 +228,13 @@ mod macros
                 }
             }
         };
+        {
+            $Name:ident<$components:ty> {
+                $($field_name:ident : $field_ty:ty = $field_init:expr),+,
+            }
+        } => {
+            systems! { $Name<$components> { $($field_name : $field_ty = $field_init),+ } }
+        }
     }
 
     #[macro_export]
@@ -232,10 +245,10 @@ mod macros
             none: [$($none_field:ident),*]
         } => {
             unsafe {
-                $crate::Aspect::new(box |en: &$crate::EntityData, co: &$components| {
+                $crate::Aspect::new(Box::new(|en: &$crate::EntityData, co: &$components| {
                     ($(co.$all_field.has(en) &&)* true) &&
                     !($(co.$none_field.has(en) ||)* false)
-                })
+                }))
             }
         };
         {
