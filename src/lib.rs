@@ -138,7 +138,7 @@ mod macros
     #[macro_export]
     macro_rules! services {
         {
-            $Name:ident<$components:ty> {
+            $Name:ident {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+
             }
         } => {
@@ -150,7 +150,7 @@ mod macros
 
             impl $crate::ServiceManager for $Name
             {
-                unsafe fn new() -> $Name
+                fn new() -> $Name
                 {
                     $Name {
                         $(
@@ -159,6 +159,13 @@ mod macros
                     }
                 }
             }
+        };
+        {
+            $Name:ident {
+                $($field_name:ident : $field_ty:ty = $field_init:expr),+,
+            }
+        } => {
+            services! { $Name { $($field_name : $field_ty = $field_init),+ } }
         }
     }
 
@@ -257,11 +264,11 @@ mod macros
             }
         };
         {
-            $Name:ident<$components:ty> {
+            $Name:ident<$components:ty, $services:ty> {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+,
             }
         } => {
-            systems! { $Name<$components> { $($field_name : $field_ty = $field_init),+ } }
+            systems! { $Name<$components, $services> { $($field_name : $field_ty = $field_init),+ } }
         }
     }
 
