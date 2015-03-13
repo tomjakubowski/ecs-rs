@@ -13,19 +13,19 @@ use {System, Process};
 
 pub trait EntityProcess: System
 {
-    fn process<'a>(&mut self, EntityIter<'a, <Self as System>::Components>, &mut DataHelper<<Self as System>::Components>);
+    fn process<'a>(&mut self, EntityIter<'a, Self::Components>, &mut DataHelper<Self::Components, Self::Services>);
 }
 
 pub struct EntitySystem<T: EntityProcess>
 {
     interested: HashSet<Entity>,
-    aspect: Aspect<<T as System>::Components>,
+    aspect: Aspect<T::Components>,
     pub inner: T,
 }
 
 impl<T: EntityProcess> EntitySystem<T>
 {
-    pub fn new(inner: T, aspect: Aspect<<T as System>::Components>) -> EntitySystem<T>
+    pub fn new(inner: T, aspect: Aspect<T::Components>) -> EntitySystem<T>
     {
         EntitySystem
         {
@@ -55,8 +55,9 @@ impl<T: EntityProcess> DerefMut for EntitySystem<T>
 
 impl<T: EntityProcess> System for EntitySystem<T>
 {
-    type Components = <T as System>::Components;
-    fn activated(&mut self, entity: &EntityData, world: &<T as System>::Components)
+    type Components = T::Components;
+    type Services = T::Services;
+    fn activated(&mut self, entity: &EntityData, world: &T::Components)
     {
         if self.aspect.check(entity, world)
         {
@@ -65,7 +66,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
+    fn reactivated(&mut self, entity: &EntityData, world: &T::Components)
     {
         if self.interested.contains(&**entity)
         {
@@ -86,7 +87,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData, world: &<T as System>::Components)
+    fn deactivated(&mut self, entity: &EntityData, world: &T::Components)
     {
         if self.interested.remove(&**entity)
         {
@@ -102,7 +103,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
 
 impl<T: EntityProcess> Process for EntitySystem<T>
 {
-    fn process(&mut self, c: &mut DataHelper<<T as System>::Components>)
+    fn process(&mut self, c: &mut DataHelper<T::Components, T::Services>)
     {
         self.inner.process(EntityIter::new(self.interested.iter()), c);
     }

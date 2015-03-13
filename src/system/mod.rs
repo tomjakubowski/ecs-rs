@@ -7,6 +7,7 @@ pub use self::interval::{IntervalSystem};
 
 use EntityData;
 use ComponentManager;
+use ServiceManager;
 use DataHelper;
 
 pub mod entity;
@@ -17,6 +18,7 @@ pub mod interval;
 pub trait System: 'static
 {
     type Components: ComponentManager;
+    type Services: ServiceManager;
     /// Optional method called when an entity is activated.
     fn activated(&mut self, _: &EntityData, _: &Self::Components)
     {
@@ -47,5 +49,5 @@ pub trait System: 'static
 pub trait Process: System
 {
     /// Process the world.
-    fn process(&mut self, &mut DataHelper<<Self as System>::Components>);
+    fn process(&mut self, &mut DataHelper<Self::Components, Self::Services>);
 }

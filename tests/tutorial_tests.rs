@@ -13,23 +13,23 @@ pub mod chapter2 {
     }
 
     systems! {
-        MySystems<MyComponents>;
+        MySystems<MyComponents, ()>;
     }
 
     #[test]
     fn test() {
-        let _ = World::<MyComponents, MySystems>::new();
+        let _ = World::<MySystems>::new();
     }
 }
 
 pub mod chapter3 {
     use ecs::World;
 
-    use chapter2::{MyComponents, MySystems};
+    use chapter2::{MySystems};
 
     #[test]
     fn test() {
-        let mut world = World::<MyComponents, MySystems>::new();
+        let mut world = World::<MySystems>::new();
 
         let entity = world.create_entity(());
         println!("{:?}", entity);
@@ -58,12 +58,12 @@ pub mod chapter4 {
     }
 
     systems! {
-        MySystems<MyComponents>;
+        MySystems<MyComponents, ()>;
     }
 
     #[test]
     fn test() {
-        let mut world = World::<MyComponents, MySystems>::new();
+        let mut world = World::<MySystems>::new();
 
         let entity = world.create_entity(
             |entity: BuildData, data: &mut MyComponents| {
@@ -98,23 +98,24 @@ pub mod chapter5 {
     pub struct PrintMessage(pub String);
     impl System for PrintMessage {
         type Components = MyComponents;
+        type Services = ();
         fn is_active(&self) -> bool { false }
     }
     impl Process for PrintMessage {
-        fn process(&mut self, _: &mut DataHelper<MyComponents>) {
+        fn process(&mut self, _: &mut DataHelper<MyComponents, ()>) {
             println!("{}", &self.0);
         }
     }
 
     systems! {
-        MySystems<MyComponents> {
+        MySystems<MyComponents, ()> {
             print_msg: PrintMessage = PrintMessage("Hello World".to_string())
         }
     }
 
     #[test]
     fn test() {
-        let mut world = World::<MyComponents, MySystems>::new();
+        let mut world = World::<MySystems>::new();
 
         world.update(); // Doesn't print anything because we the system is passive.
         world.systems.print_msg.0 = "Goodbye World".to_string();
@@ -144,9 +145,9 @@ pub mod chapter6 {
     }
 
     pub struct MotionProcess;
-    impl System for MotionProcess { type Components = MyComponents; }
+    impl System for MotionProcess { type Components = MyComponents; type Services = (); }
     impl EntityProcess for MotionProcess {
-        fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents>) {
+        fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents, ()>) {
             for e in entities {
                 let mut position = data.position[e];
                 let velocity = data.velocity[e];
@@ -158,19 +159,25 @@ pub mod chapter6 {
     }
 
     systems! {
-        MySystems<MyComponents> {
+        MySystems<MyComponents, ()> {
             motion: EntitySystem<MotionProcess> = EntitySystem::new(MotionProcess, aspect!(<MyComponents> all: [position, velocity]))
         }
     }
 
     #[test]
     fn test() {
-        let mut world = World::<MyComponents, MySystems>::new();
+        let mut world = World::<MySystems>::new();
 
         let entity = world.create_entity(
             |entity: BuildData, data: &mut MyComponents| {
                 data.position.add(&entity, Position { x: 0.0, y: 0.0 });
                 data.velocity.add(&entity, Velocity { dx: 1.0, dy: 0.0 });
+            }
+        );
+
+        world.create_entity(
+            |entity: BuildData, data: &mut MyComponents| {
+                data.position.add(&entity, Position { x: 0.0, y: 0.0 });
             }
         );
 

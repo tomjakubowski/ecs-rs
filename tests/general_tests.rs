@@ -31,7 +31,7 @@ components! {
 }
 
 systems! {
-    TestSystems<TestComponents> {
+    TestSystems<TestComponents, ()> {
         hello_world: HelloWorld = HelloWorld("Hello, World!"),
         print_position: EntitySystem<PrintPosition> = EntitySystem::new(PrintPosition,
                 aspect!(<TestComponents>
@@ -44,17 +44,17 @@ systems! {
 pub struct HelloWorld(&'static str);
 impl Process for HelloWorld
 {
-    fn process(&mut self, _: &mut DataHelper<TestComponents>)
+    fn process(&mut self, _: &mut DataHelper<TestComponents, ()>)
     {
         println!("{}", self.0);
     }
 }
-impl System for HelloWorld { type Components = TestComponents; }
+impl System for HelloWorld { type Components = TestComponents; type Services = (); }
 
 pub struct PrintPosition;
 impl EntityProcess for PrintPosition
 {
-    fn process(&mut self, en: EntityIter<TestComponents>, co: &mut DataHelper<TestComponents>)
+    fn process(&mut self, en: EntityIter<TestComponents>, co: &mut DataHelper<TestComponents, ()>)
     {
         for e in en
         {
@@ -64,13 +64,14 @@ impl EntityProcess for PrintPosition
 }
 impl System for PrintPosition {
     type Components = TestComponents;
+    type Services = ();
     fn is_active(&self) -> bool { false }
 }
 
 #[test]
 fn test_general_1()
 {
-    let mut world = World::<TestComponents, TestSystems>::new();
+    let mut world = World::<TestSystems>::new();
 
     // Test entity builders
     let entity = world.create_entity(|e: BuildData, c: &mut TestComponents| {

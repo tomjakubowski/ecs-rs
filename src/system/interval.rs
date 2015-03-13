@@ -27,7 +27,7 @@ impl<T: Process> IntervalSystem<T>
 
 impl<T: Process> Process for IntervalSystem<T>
 {
-    fn process(&mut self, c: &mut DataHelper<<T as System>::Components>)
+    fn process(&mut self, c: &mut DataHelper<T::Components, T::Services>)
     {
         self.ticker += 1;
         if self.ticker == self.interval
@@ -40,18 +40,19 @@ impl<T: Process> Process for IntervalSystem<T>
 
 impl<T: Process> System for IntervalSystem<T>
 {
-    type Components = <T as System>::Components;
-    fn activated(&mut self, e: &EntityData, w: &<T as System>::Components)
+    type Components = T::Components;
+    type Services = T::Services;
+    fn activated(&mut self, e: &EntityData, w: &T::Components)
     {
         self.inner.activated(e, w);
     }
 
-    fn reactivated(&mut self, e: &EntityData, w: &<T as System>::Components)
+    fn reactivated(&mut self, e: &EntityData, w: &T::Components)
     {
         self.inner.reactivated(e, w);
     }
 
-    fn deactivated(&mut self, e: &EntityData, w: &<T as System>::Components)
+    fn deactivated(&mut self, e: &EntityData, w: &T::Components)
     {
         self.inner.deactivated(e, w);
     }

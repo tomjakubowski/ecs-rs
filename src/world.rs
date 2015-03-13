@@ -6,24 +6,24 @@ use {Entity, EntityIter, EntityBuilder, EntityModifier};
 use {System};
 use entity::EntityManager;
 
-enum Event<'a, T> where T: ComponentManager
+enum Event
 {
-    BuildEntity(Entity, Box<EntityBuilder<T>+'a>),
-    ModifyEntity(Entity, Box<EntityModifier<T>+'a>),
+    BuildEntity(Entity),
     RemoveEntity(Entity),
 }
 
-pub struct World<T, U> where T: ComponentManager, U: SystemManager<Components=T>
+pub struct World<S> where S: SystemManager
 {
-    pub systems: U,
-    pub data: DataHelper<T>,
+    pub systems: S,
+    pub data: DataHelper<S::Components, S::Services>,
 }
 
-pub struct DataHelper<T> where T: ComponentManager
+pub struct DataHelper<C, M> where C: ComponentManager, M: ServiceManager
 {
-    pub components: T,
+    pub components: C,
+    pub services: M,
     entities: EntityManager,
-    event_queue: Vec<Event<'static, T>>,
+    event_queue: Vec<Event>,
 }
 
 pub unsafe trait ComponentManager: 'static
@@ -32,54 +32,62 @@ pub unsafe trait ComponentManager: 'static
     unsafe fn remove_all(&mut self, en: &Entity);
 }
 
+pub unsafe trait ServiceManager: 'static
+{
+    unsafe fn new() -> Self;
+}
+
+unsafe impl ServiceManager for () { unsafe fn new(){} }
+
 pub unsafe trait SystemManager: 'static
 {
     type Components: ComponentManager;
+    type Services: ServiceManager;
     unsafe fn new() -> Self;
     unsafe fn activated(&mut self, en: EntityData, co: &Self::Components);
     unsafe fn reactivated(&mut self, en: EntityData, co: &Self::Components);
     unsafe fn deactivated(&mut self, en: EntityData, co: &Self::Components);
-    unsafe fn update(&mut self, co: &mut DataHelper<Self::Components>);
+    unsafe fn update(&mut self, co: &mut DataHelper<Self::Components, Self::Services>);
 }
 
-impl<T: ComponentManager, U: SystemManager<Components=T>> Deref for World<T, U>
+impl<S: SystemManager> Deref for World<S>
 {
-    type Target = DataHelper<T>;
-    fn deref(&self) -> &DataHelper<T>
+    type Target = DataHelper<S::Components, S::Services>;
+    fn deref(&self) -> &DataHelper<S::Components, S::Services>
     {
         &self.data
     }
 }
 
-impl<T: ComponentManager, U: SystemManager<Components=T>> DerefMut for World<T, U>
+impl<S: SystemManager> DerefMut for World<S>
 {
-    fn deref_mut(&mut self) -> &mut DataHelper<T>
+    fn deref_mut(&mut self) -> &mut DataHelper<S::Components, S::Services>
     {
         &mut self.data
     }
 }
 
-impl<T: ComponentManager> Deref for DataHelper<T>
+impl<C: ComponentManager, M: ServiceManager> Deref for DataHelper<C, M>
 {
-    type Target = T;
-    fn deref(&self) -> &T
+    type Target = C;
+    fn deref(&self) -> &C
     {
         &self.components
     }
 }
 
-impl<T: ComponentManager> DerefMut for DataHelper<T>
+impl<C: ComponentManager, M: ServiceManager> DerefMut for DataHelper<C, M>
 {
-    fn deref_mut(&mut self) -> &mut T
+    fn deref_mut(&mut self) -> &mut C
     {
         &mut self.components
     }
 }
 
-impl<T: ComponentManager> DataHelper<T>
+impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
 {
     pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
-        where F: FnMut(EntityData, &mut T) -> R
+        where F: FnMut(EntityData, &mut C) -> R
     {
         if self.entities.is_valid(entity) {
             Some(call(EntityData(entity), self))
@@ -88,16 +96,12 @@ impl<T: ComponentManager> DataHelper<T>
         }
     }
 
-    pub fn create_entity<B>(&mut self, builder: B) -> Entity where B: EntityBuilder<T>+'static
+    pub fn create_entity<B>(&mut self, mut builder: B) -> Entity where B: EntityBuilder<C>
     {
         let entity = self.entities.create();
-        self.event_queue.push(Event::BuildEntity(entity, Box::new(builder)));
+        builder.build(BuildData(&entity), &mut self.components);
+        self.event_queue.push(Event::BuildEntity(entity));
         entity
-    }
-
-    pub fn modify_entity<M>(&mut self, entity: Entity, modifier: M) where M: EntityModifier<T>+'static
-    {
-        self.event_queue.push(Event::ModifyEntity(entity, Box::new(modifier)));
     }
 
     pub fn remove_entity(&mut self, entity: Entity)
@@ -106,64 +110,47 @@ impl<T: ComponentManager> DataHelper<T>
     }
 }
 
-impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
+impl<S: SystemManager> World<S>
 {
-    pub fn new() -> World<T, U>
+    pub fn new() -> World<S>
     {
         World {
-            systems: unsafe { <U as SystemManager>::new() },
+            systems: unsafe { S::new() },
             data: DataHelper {
-                components: unsafe { <T as ComponentManager>::new() },
+                components: unsafe { S::Components::new() },
+                services: unsafe { S::Services::new() },
                 entities: EntityManager::new(),
                 event_queue: Vec::new(),
             },
         }
     }
 
-    pub fn create_entity<B>(&mut self, mut builder: B) -> Entity where B: EntityBuilder<T>
-    {
-        let entity = self.data.entities.create();
-        builder.build(BuildData(&entity), &mut self.data.components);
-        unsafe { self.systems.activated(EntityData(&entity), &self.data.components); }
-        entity
-    }
-
-    pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
-        where F: FnMut(EntityData, &mut T) -> R
-    {
-        if self.data.entities.is_valid(entity) {
-            Some(call(EntityData(entity), &mut self.data))
-        } else {
-            None
-        }
-    }
-
-    pub fn entities(&self) -> EntityIter<T>
+    pub fn entities(&self) -> EntityIter<S::Components>
     {
         self.data.entities.iter()
     }
 
-    pub fn modify_entity<M>(&mut self, entity: Entity, mut modifier: M) where M: EntityModifier<T>
+    pub fn modify_entity<M>(&mut self, entity: Entity, mut modifier: M) where M: EntityModifier<S::Components>
     {
-        modifier.modify(ModifyData(&entity), &mut self.data.components);
-        unsafe { self.systems.reactivated(EntityData(&entity), &self.data.components); }
-    }
-
-    pub fn remove_entity(&mut self, entity: Entity)
-    {
-        self.process_event(Event::RemoveEntity(entity));
-    }
-
-    fn process_event(&mut self, event: Event<T>)
-    {
-        process_event(&mut self.data.components, &mut self.systems, &mut self.data.entities, event);
+        modifier.modify(ModifyData(&entity), &mut self.components);
+        unsafe { self.systems.reactivated(EntityData(&entity), &mut self.data.components); }
     }
 
     fn flush_queue(&mut self)
     {
-        for event in self.data.event_queue.drain()
-        {
-            process_event(&mut self.data.components, &mut self.systems, &mut self.data.entities, event);
+        for e in self.data.event_queue.drain() {
+            match e {
+                Event::BuildEntity(entity) => {
+                    unsafe { self.systems.activated(EntityData(&entity), &mut self.data.components); }
+                },
+                Event::RemoveEntity(entity) => {
+                    unsafe {
+                        self.systems.deactivated(EntityData(&entity), &mut self.data.components);
+                        self.data.components.remove_all(&entity);
+                    }
+                    self.data.entities.remove(&entity);
+                }
+            }
         }
     }
 
@@ -171,28 +158,6 @@ impl<T: ComponentManager, U: SystemManager<Components=T>> World<T, U>
     {
         self.flush_queue();
         unsafe { self.systems.update(&mut self.data); }
-    }
-}
-
-// This function has to be external to World because of borrowing rules
-fn process_event<T: ComponentManager, U: SystemManager<Components=T>>(components: &mut T, systems: &mut U, entities: &mut EntityManager, event: Event<T>)
-{
-    match event
-    {
-        Event::BuildEntity(entity, mut builder) => {
-            builder.build(BuildData(&entity), components);
-            unsafe { systems.activated(EntityData(&entity), components); }
-        },
-        Event::ModifyEntity(entity, mut modifier) => {
-            modifier.modify(ModifyData(&entity), components);
-            unsafe { systems.reactivated(EntityData(&entity), components); }
-        },
-        Event::RemoveEntity(entity) => {
-            unsafe {
-                systems.deactivated(EntityData(&entity), components);
-                components.remove_all(&entity);
-            }
-            entities.remove(&entity);
-        }
+        self.flush_queue();
     }
 }

@@ -38,7 +38,7 @@ pub use component::{Component, ComponentList};
 pub use component::{EntityBuilder, EntityModifier};
 pub use entity::{Entity, EntityIter};
 pub use system::{System, Process};
-pub use world::{ComponentManager, SystemManager, DataHelper, World};
+pub use world::{ComponentManager, ServiceManager, SystemManager, DataHelper, World};
 
 use std::ops::{Deref};
 
@@ -137,15 +137,43 @@ mod macros
     }
 
     #[macro_export]
+    macro_rules! services {
+        {
+            $Name:ident<$components:ty> {
+                $($field_name:ident : $field_ty:ty = $field_init:expr),+
+            }
+        } => {
+            pub struct $Name {
+                $(
+                    pub $field_name : $field_ty,
+                )+
+            }
+
+            impl $crate::ServiceManager for $Name
+            {
+                unsafe fn new() -> $Name
+                {
+                    $Name {
+                        $(
+                            $field_name : $field_init,
+                        )+
+                    }
+                }
+            }
+        }
+    }
+
+    #[macro_export]
     macro_rules! systems {
         {
-            $Name:ident<$components:ty>;
+            $Name:ident<$components:ty, $services:ty>;
         } => {
             pub struct $Name;
 
             unsafe impl $crate::SystemManager for $Name
             {
                 type Components = $components;
+                type Services = $services;
                 #[allow(unused_unsafe)] // The aspect macro is probably going to be used here and it also expands to an unsafe block.
                 unsafe fn new() -> $Name
                 {
@@ -167,14 +195,14 @@ mod macros
 
                 }
 
-                unsafe fn update(&mut self, _: &mut $crate::DataHelper<$components>)
+                unsafe fn update(&mut self, _: &mut $crate::DataHelper<$components, $services>)
                 {
 
                 }
             }
         };
         {
-            $Name:ident<$components:ty> {
+            $Name:ident<$components:ty, $services:ty> {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+
             }
         } => {
@@ -187,6 +215,7 @@ mod macros
             unsafe impl $crate::SystemManager for $Name
             {
                 type Components = $components;
+                type Services = $services;
                 #[allow(unused_unsafe)] // The aspect macro is probably going to be used here and it also expands to an unsafe block.
                 unsafe fn new() -> $Name
                 {
@@ -218,7 +247,7 @@ mod macros
                     )+
                 }
 
-                unsafe fn update(&mut self, co: &mut $crate::DataHelper<$components>)
+                unsafe fn update(&mut self, co: &mut $crate::DataHelper<$components, $services>)
                 {
                     $(
                         if self.$field_name.is_active() {
@@ -245,9 +274,9 @@ mod macros
             none: [$($none_field:ident),*]
         } => {
             unsafe {
-                $crate::Aspect::new(Box::new(|en: &$crate::EntityData, co: &$components| {
-                    ($(co.$all_field.has(en) &&)* true) &&
-                    !($(co.$none_field.has(en) ||)* false)
+                $crate::Aspect::new(Box::new(|_en: &$crate::EntityData, _co: &$components| {
+                    ($(_co.$all_field.has(_en) &&)* true) &&
+                    !($(_co.$none_field.has(_en) ||)* false)
                 }))
             }
         };

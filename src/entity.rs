@@ -100,7 +100,7 @@ impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
     type Item = EntityData<'a>;
     fn next(&mut self) -> Option<EntityData<'a>>
     {
-        self.inner.next().map(|x| EntityData(x))
+        self.inner.next().map(|e| EntityData(e))
     }
 }
 
