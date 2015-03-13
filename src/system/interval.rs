@@ -42,17 +42,17 @@ impl<T: Process> System for IntervalSystem<T>
 {
     type Components = T::Components;
     type Services = T::Services;
-    fn activated(&mut self, e: &EntityData, w: &T::Components)
+    fn activated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
     {
         self.inner.activated(e, w);
     }
 
-    fn reactivated(&mut self, e: &EntityData, w: &T::Components)
+    fn reactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
     {
         self.inner.reactivated(e, w);
     }
 
-    fn deactivated(&mut self, e: &EntityData, w: &T::Components)
+    fn deactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
     {
         self.inner.deactivated(e, w);
     }

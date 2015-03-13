@@ -2,8 +2,8 @@
 //! Types to process the world and entities.
 
 pub use self::entity::{EntitySystem, EntityProcess};
-// pub use self::interact::{InteractSystem, InteractProcess};
-// pub use self::interval::{IntervalSystem};
+pub use self::interact::{InteractSystem, InteractProcess};
+pub use self::interval::{IntervalSystem};
 
 use EntityData;
 use ComponentManager;
@@ -11,8 +11,8 @@ use ServiceManager;
 use DataHelper;
 
 pub mod entity;
-// pub mod interact;
-// pub mod interval;
+pub mod interact;
+pub mod interval;
 
 /// Generic base system type.
 pub trait System: 'static
