@@ -31,12 +31,11 @@
 
 #![feature(core)]
 #![feature(collections)]
-#![feature(std_misc)]
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList};
 pub use component::{EntityBuilder, EntityModifier};
-pub use entity::{Entity, EntityIter};
+pub use entity::{Entity, IndexedEntity, EntityIter};
 pub use system::{System, Process};
 pub use world::{ComponentManager, ServiceManager, SystemManager, DataHelper, World};
 
@@ -48,22 +47,22 @@ pub mod entity;
 pub mod system;
 pub mod world;
 
-pub struct BuildData<'a>(&'a Entity);
-pub struct ModifyData<'a>(&'a Entity);
-pub struct EntityData<'a>(&'a Entity);
-impl<'a> Deref for EntityData<'a>
+pub struct BuildData<'a, T: ComponentManager>(&'a IndexedEntity<T>);
+pub struct ModifyData<'a, T: ComponentManager>(&'a IndexedEntity<T>);
+pub struct EntityData<'a, T: ComponentManager>(&'a IndexedEntity<T>);
+impl<'a, T: ComponentManager> Deref for EntityData<'a, T>
 {
-    type Target = Entity;
-    fn deref(&self) -> &Entity
+    type Target = IndexedEntity<T>;
+    fn deref(&self) -> &IndexedEntity<T>
     {
         &self.0
     }
 }
 
 #[doc(hidden)]
-pub unsafe trait EditData { fn entity(&self) -> &Entity; }
-unsafe impl<'a> EditData for ModifyData<'a> { fn entity(&self) -> &Entity { &self.0 } }
-unsafe impl<'a> EditData for EntityData<'a> { fn entity(&self) -> &Entity { &self.0 } }
+pub unsafe trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }
+unsafe impl<'a, T: ComponentManager> EditData<T> for ModifyData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
+unsafe impl<'a, T: ComponentManager> EditData<T> for EntityData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
 
 #[macro_use]
 mod macros
@@ -91,7 +90,7 @@ mod macros
                     $Name
                 }
 
-                unsafe fn remove_all(&mut self, _: &$crate::Entity)
+                unsafe fn remove_all(&mut self, _: &$crate::IndexedEntity<$Name>)
                 {
 
                 }
@@ -104,7 +103,7 @@ mod macros
         } => {
             pub struct $Name {
                 $(
-                    pub $field_name : $crate::ComponentList<$field_ty>,
+                    pub $field_name : $crate::ComponentList<$Name, $field_ty>,
                 )+
             }
 
@@ -119,7 +118,7 @@ mod macros
                     }
                 }
 
-                unsafe fn remove_all(&mut self, entity: &$crate::Entity)
+                unsafe fn remove_all(&mut self, entity: &$crate::IndexedEntity<$Name>)
                 {
                     $(
                         self.$field_name.clear(entity);
@@ -180,17 +179,17 @@ mod macros
                     $Name
                 }
 
-                unsafe fn activated(&mut self, _: $crate::EntityData, _: &$components)
+                unsafe fn activated(&mut self, _: $crate::EntityData<$components>, _: &$components)
                 {
 
                 }
 
-                unsafe fn reactivated(&mut self, _: $crate::EntityData, _: &$components)
+                unsafe fn reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
                 {
 
                 }
 
-                unsafe fn deactivated(&mut self, _: $crate::EntityData, _: &$components)
+                unsafe fn deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
                 {
 
                 }
@@ -226,21 +225,21 @@ mod macros
                     }
                 }
 
-                unsafe fn activated(&mut self, en: $crate::EntityData, co: &$components)
+                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
                         self.$field_name.activated(&en, co);
                     )+
                 }
 
-                unsafe fn reactivated(&mut self, en: $crate::EntityData, co: &$components)
+                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
                         self.$field_name.reactivated(&en, co);
                     )+
                 }
 
-                unsafe fn deactivated(&mut self, en: $crate::EntityData, co: &$components)
+                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
                         self.$field_name.deactivated(&en, co);
@@ -274,7 +273,7 @@ mod macros
             none: [$($none_field:ident),*]
         } => {
             unsafe {
-                $crate::Aspect::new(Box::new(|_en: &$crate::EntityData, _co: &$components| {
+                $crate::Aspect::new(Box::new(|_en: &$crate::EntityData<$components>, _co: &$components| {
                     ($(_co.$all_field.has(_en) &&)* true) &&
                     !($(_co.$none_field.has(_en) ||)* false)
                 }))

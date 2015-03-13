@@ -66,7 +66,7 @@ pub mod chapter4 {
         let mut world = World::<MySystems>::new();
 
         let entity = world.create_entity(
-            |entity: BuildData, data: &mut MyComponents| {
+            |entity: BuildData<MyComponents>, data: &mut MyComponents| {
                 data.position.add(&entity, Position { x: 0.0, y: 0.0 });
                 data.respawn.add(&entity, Position { x: 0.0, y: 0.0 });
             }
@@ -78,7 +78,7 @@ pub mod chapter4 {
         });
 
         world.modify_entity(entity,
-            |entity: ModifyData, data: &mut MyComponents| {
+            |entity: ModifyData<MyComponents>, data: &mut MyComponents| {
                 data.respawn[entity].x -= 4.0;
                 data.position[entity] = data.respawn[entity];
                 data.respawn.remove(&entity);
@@ -127,7 +127,7 @@ pub mod chapter5 {
 pub mod chapter6 {
     use ecs::system::{EntityProcess, EntitySystem, System};
     use ecs::{DataHelper, EntityIter, World};
-    use ecs::{BuildData, EntityData};
+    use ecs::{BuildData};
 
     use chapter4::Position;
 
@@ -169,26 +169,26 @@ pub mod chapter6 {
         let mut world = World::<MySystems>::new();
 
         let entity = world.create_entity(
-            |entity: BuildData, data: &mut MyComponents| {
+            |entity: BuildData<MyComponents>, data: &mut MyComponents| {
                 data.position.add(&entity, Position { x: 0.0, y: 0.0 });
                 data.velocity.add(&entity, Velocity { dx: 1.0, dy: 0.0 });
             }
         );
 
         world.create_entity(
-            |entity: BuildData, data: &mut MyComponents| {
+            |entity: BuildData<MyComponents>, data: &mut MyComponents| {
                 data.position.add(&entity, Position { x: 0.0, y: 0.0 });
             }
         );
 
-        world.with_entity_data(&entity, |en: EntityData, co: &mut MyComponents|
-            assert_eq!(Position { x: 0.0, y: 0.0 }, co.position[en])
+        world.with_entity_data(&entity, |en, data|
+            assert_eq!(Position { x: 0.0, y: 0.0 }, data.position[en])
         );
 
         world.update();
 
-        world.with_entity_data(&entity, |en: EntityData, co: &mut MyComponents|
-            assert_eq!(Position { x: 1.0, y: 0.0 }, co.position[en])
+        world.with_entity_data(&entity, |en, data|
+            assert_eq!(Position { x: 1.0, y: 0.0 }, data.position[en])
         );
     }
 }

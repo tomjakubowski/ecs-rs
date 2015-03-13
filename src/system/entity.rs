@@ -1,12 +1,12 @@
 
 //! Systems to specifically deal with entities.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use Aspect;
 use DataHelper;
-use Entity;
+use {Entity, IndexedEntity};
 use EntityData;
 use EntityIter;
 use {System, Process};
@@ -18,7 +18,7 @@ pub trait EntityProcess: System
 
 pub struct EntitySystem<T: EntityProcess>
 {
-    interested: HashSet<Entity>,
+    interested: HashMap<Entity, IndexedEntity<T::Components>>,
     aspect: Aspect<T::Components>,
     pub inner: T,
 }
@@ -29,7 +29,7 @@ impl<T: EntityProcess> EntitySystem<T>
     {
         EntitySystem
         {
-            interested: HashSet::new(),
+            interested: HashMap::new(),
             aspect: aspect,
             inner: inner,
         }
@@ -57,18 +57,18 @@ impl<T: EntityProcess> System for EntitySystem<T>
 {
     type Components = T::Components;
     type Services = T::Services;
-    fn activated(&mut self, entity: &EntityData, world: &T::Components)
+    fn activated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
     {
         if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity);
+            self.interested.insert(***entity, unsafe { (**entity).clone() });
             self.inner.activated(entity, world);
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData, world: &T::Components)
+    fn reactivated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
     {
-        if self.interested.contains(&**entity)
+        if self.interested.contains_key(entity)
         {
             if self.aspect.check(entity, world)
             {
@@ -76,20 +76,20 @@ impl<T: EntityProcess> System for EntitySystem<T>
             }
             else
             {
-                self.interested.remove(&**entity);
+                self.interested.remove(entity);
                 self.inner.deactivated(entity, world);
             }
         }
         else if self.aspect.check(entity, world)
         {
-            self.interested.insert(**entity);
+            self.interested.insert(***entity, unsafe { (**entity).clone() });
             self.inner.activated(entity, world);
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData, world: &T::Components)
+    fn deactivated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
     {
-        if self.interested.remove(&**entity)
+        if self.interested.remove(entity).is_some()
         {
             self.inner.deactivated(entity, world);
         }
@@ -105,6 +105,6 @@ impl<T: EntityProcess> Process for EntitySystem<T>
 {
     fn process(&mut self, c: &mut DataHelper<T::Components, T::Services>)
     {
-        self.inner.process(EntityIter::new(self.interested.iter()), c);
+        self.inner.process(EntityIter::Map(self.interested.values()), c);
     }
 }

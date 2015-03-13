@@ -1,7 +1,7 @@
 
 //! Entity identifier and manager types.
 
-use std::collections::hash_set::{HashSet, Iter, Drain};
+use std::collections::hash_map::{HashMap, Values};
 use std::default::Default;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -12,32 +12,46 @@ use EntityData;
 
 pub type Id = u64;
 
-/// Dual identifier for an entity.
-///
-/// The first element (usize) is the entity's index, used to locate components.
-/// This value can be recycled, so the second element (u64) is used as an identifier.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Entity(usize, Id);
+pub struct Entity(Id);
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+pub struct IndexedEntity<T: ComponentManager>(usize, Entity, PhantomData<fn(T)>);
 
 impl Entity
 {
     pub fn nil() -> Entity
     {
-        Entity(0, 0)
-    }
-
-    /// Returns the entity's index.
-    #[inline]
-    pub fn get_index(&self) -> usize
-    {
-        self.0.clone()
+        Entity(0)
     }
 
     /// Returns the entity's unique identifier.
     #[inline]
-    pub fn get_id(&self) -> Id
+    pub fn id(&self) -> Id
     {
-        self.1.clone()
+        self.0
+    }
+}
+
+impl<T: ComponentManager> IndexedEntity<T>
+{
+    pub fn index(&self) -> usize
+    {
+        self.0
+    }
+
+    pub unsafe fn clone(&self) -> IndexedEntity<T>
+    {
+        IndexedEntity(self.0, self.1, self.2)
+    }
+}
+
+impl<T: ComponentManager> Deref for IndexedEntity<T>
+{
+    type Target = Entity;
+    fn deref(&self) -> &Entity
+    {
+        &self.1
     }
 }
 
@@ -49,23 +63,6 @@ impl Default for Entity
     }
 }
 
-impl Deref for Entity
-{
-    type Target = usize;
-
-    #[inline]
-    fn deref(&self) -> &usize
-    {
-        &self.0
-    }
-}
-
-pub struct EntityIter<'a, T: ComponentManager>
-{
-    inner: Iter<'a, Entity>,
-    __phantom: PhantomData<fn(T)>,
-}
-
 pub struct FilteredEntityIter<'a, T: ComponentManager>
 {
     inner: EntityIter<'a, T>,
@@ -73,17 +70,14 @@ pub struct FilteredEntityIter<'a, T: ComponentManager>
     components: &'a T,
 }
 
+// Inner Entity Iterator
+pub enum EntityIter<'a, T: ComponentManager>
+{
+    Map(Values<'a, Entity, IndexedEntity<T>>),
+}
+
 impl<'a, T: ComponentManager> EntityIter<'a, T>
 {
-    pub fn new(iter: Iter<'a, Entity>) -> EntityIter<'a, T>
-    {
-        EntityIter
-        {
-            inner: iter,
-            __phantom: PhantomData::<fn(T)>,
-        }
-    }
-
     pub fn filter(self, aspect: Aspect<T>, components: &'a T) -> FilteredEntityIter<'a, T>
     {
         FilteredEntityIter
@@ -97,17 +91,20 @@ impl<'a, T: ComponentManager> EntityIter<'a, T>
 
 impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
 {
-    type Item = EntityData<'a>;
-    fn next(&mut self) -> Option<EntityData<'a>>
+    type Item = EntityData<'a, T>;
+    fn next(&mut self) -> Option<EntityData<'a, T>>
     {
-        self.inner.next().map(|e| EntityData(e))
+        match *self
+        {
+            EntityIter::Map(ref mut values) => values.next().map(|x| EntityData(x))
+        }
     }
 }
 
 impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
 {
-    type Item = EntityData<'a>;
-    fn next(&mut self) -> Option<EntityData<'a>>
+    type Item = EntityData<'a, T>;
+    fn next(&mut self) -> Option<EntityData<'a, T>>
     {
         for x in self.inner.by_ref()
         {
@@ -126,34 +123,29 @@ impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
 
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
-pub struct EntityManager
+pub struct EntityManager<T: ComponentManager>
 {
     indices: IndexPool,
-    entities: HashSet<Entity>,
+    entities: HashMap<Entity, IndexedEntity<T>>,
     next_id: Id,
 }
 
-impl EntityManager
+impl<T: ComponentManager> EntityManager<T>
 {
     /// Returns a new `EntityManager`
-    pub fn new() -> EntityManager
+    pub fn new() -> EntityManager<T>
     {
         EntityManager
         {
             indices: IndexPool::new(),
-            entities: HashSet::new(),
+            entities: HashMap::new(),
             next_id: 0,
         }
     }
 
-    pub fn iter<T: ComponentManager>(&self) -> EntityIter<T>
+    pub fn iter(&self) -> EntityIter<T>
     {
-        EntityIter::new(self.entities.iter())
-    }
-
-    pub fn drain(&mut self) -> Drain<Entity>
-    {
-        self.entities.drain()
+        EntityIter::Map(self.entities.values())
     }
 
     pub fn count(&self) -> usize
@@ -161,12 +153,17 @@ impl EntityManager
         self.indices.count()
     }
 
+    pub fn indexed(&self, entity: &Entity) -> &IndexedEntity<T>
+    {
+        &self.entities[*entity]
+    }
+
     /// Creates a new `Entity`, assigning it the first available index.
     pub fn create(&mut self) -> Entity
     {
         self.next_id += 1;
-        let ret = Entity(self.indices.get_index(), self.next_id);
-        self.entities.insert(ret.clone());
+        let ret = Entity(self.next_id);
+        self.entities.insert(ret, IndexedEntity(self.indices.get_index(), ret, PhantomData));
         ret
     }
 
@@ -174,14 +171,13 @@ impl EntityManager
     #[inline]
     pub fn is_valid(&self, entity: &Entity) -> bool
     {
-        self.entities.contains(entity)
+        self.entities.contains_key(entity)
     }
 
     /// Deletes an entity from the manager.
     pub fn remove(&mut self, entity: &Entity)
     {
-        self.entities.remove(entity);
-        self.indices.return_id(**entity);
+        self.entities.remove(entity).map(|e| self.indices.return_id(e.index()));
     }
 }
 

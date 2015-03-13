@@ -2,8 +2,8 @@
 //! Types to process the world and entities.
 
 pub use self::entity::{EntitySystem, EntityProcess};
-pub use self::interact::{InteractSystem, InteractProcess};
-pub use self::interval::{IntervalSystem};
+// pub use self::interact::{InteractSystem, InteractProcess};
+// pub use self::interval::{IntervalSystem};
 
 use EntityData;
 use ComponentManager;
@@ -11,8 +11,8 @@ use ServiceManager;
 use DataHelper;
 
 pub mod entity;
-pub mod interact;
-pub mod interval;
+// pub mod interact;
+// pub mod interval;
 
 /// Generic base system type.
 pub trait System: 'static
@@ -20,7 +20,7 @@ pub trait System: 'static
     type Components: ComponentManager;
     type Services: ServiceManager;
     /// Optional method called when an entity is activated.
-    fn activated(&mut self, _: &EntityData, _: &Self::Components)
+    fn activated(&mut self, _: &EntityData<Self::Components>, _: &Self::Components)
     {
 
     }
@@ -28,14 +28,14 @@ pub trait System: 'static
     /// Optional method called when an entity is reactivated.
     ///
     /// By default it calls deactivated() followed by activated()
-    fn reactivated(&mut self, e: &EntityData, c: &Self::Components)
+    fn reactivated(&mut self, e: &EntityData<Self::Components>, c: &Self::Components)
     {
         self.deactivated(e, c);
         self.activated(e, c);
     }
 
     /// Optional method called when an entity is deactivated.
-    fn deactivated(&mut self, _: &EntityData, _: &Self::Components)
+    fn deactivated(&mut self, _: &EntityData<Self::Components>, _: &Self::Components)
     {
 
     }

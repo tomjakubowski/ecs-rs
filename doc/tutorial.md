@@ -40,9 +40,11 @@ It encourages separation of each piece of logic, allowing the programmer to conc
 ## 2. Creating The World
 In ecs-rs, we use a `World` object to manage all entities, components, and systems. Of course, the `World` has no definition of your component types or systems, and so these are handled through generics and associated types.
 ```rust
-World<T, U> where T: ComponentManager, U: SystemManager<Components=T>
+World<S> where S: SystemManager<S>
 ```
-Of course, this means we have to specify our own `ComponentManager` and `SystemManager` types, but if you look into the source, you'll see that they are `unsafe` traits. There's nothing particularly unsafe about them in the way that `unsafe` is usually used, but if you define the methods wrongly you can get _unexpected_ (but not unsafe/undefined) behaviour.
+`SystemManager` in turn, has the associated types `Components: ComponentManager` and `Services: ServiceManager`.
+
+`ServiceManager` has a default implementation for `()`, but we'll have to specify our own `ComponentManager` and `SystemManager` types. If you look into the source, you'll see that they are `unsafe` traits. There's nothing particularly unsafe about them in the way that `unsafe` is usually used, but if you define the methods wrongly you can get _unexpected_ (but not unsafe/undefined) behaviour.
 
 For the sake of simplicity we'll not include any components or systems. We'll have a proper look at them later. This makes the macro definitions rather simple.
 ```rust
@@ -56,11 +58,11 @@ components! {
 }
 
 systems! {
-    MySystems<MyComponents>;
+    MySystems<MyComponents, ()>;
 }
 
 fn main() {
-    let mut world = World::<MyComponents, MySystems>::new();
+    let mut world = World::<MySystems>::new();
 }
 ```
 That's all it takes to create a world object. Admittedly, what we have here is a rather useless World, but we'll make it more complex later.
@@ -135,7 +137,7 @@ Because the respawn data is used very rarely (only when an entity respawns), it'
 To add components to entities we're going to have to use a proper `EntityBuilder`.
 ```rust
 let entity = world.create_entity(
-    |entity: BuildData, data: &mut MyComponents| {
+    |entity: BuildData<MyComponents>, data: &mut MyComponents| {
         data.position.add(&entity, Position { x: 0.0, y: 0.0 });
         data.respawn.add(&entity, Position { x: 0.0, y: 0.0 });
     }
@@ -158,7 +160,7 @@ world.with_entity_data(&entity, |entity, data| {
 To modify an entity's 'aspect' (it's set of active components), you have to use an `EntityModifier`, which is practically the same as an `EntityBuilder`, except you can modify existing data as well as add new components.
 ```rust
 world.modify_entity(entity,
-    |entity: ModifyData, data: &mut MyComponents| {
+    |entity: ModifyData<MyComponents>, data: &mut MyComponents| {
         data.respawn[entity].x -= 4.0;
         data.position[entity] = data.respawn[entity];
         data.respawn.remove(&entity);
@@ -181,14 +183,14 @@ pub struct PrintMessage(pub String);
 ```
 No explanation really needed here.
 
-Next, we need to implement the `System` trait. It has a few functions, but they all have defaults, so you just need to define the `Components` associated type:
+Next, we need to implement the `System` trait. It has a few functions, but they all have defaults, so you just need to define the `Components` and `Services` associated types:
 ```rust
-impl System for PrintMessage { type Components = MyComponents; }
+impl System for PrintMessage { type Components = MyComponents; type Services = (); }
 ```
 Finally, we implement the `Process` trait. The reason this isn't part of the `System` trait is because special helper systems need to pass in extra data to the `process` function, but still need all the behaviour from the `System` implementation.
 ```rust
 impl Process for PrintMessage {
-    fn process(&mut self, _: &mut DataHelper<MyComponents>) {
+    fn process(&mut self, _: &mut DataHelper<MyComponents, ()>) {
         println!("{}", &self.0);
     }
 }
@@ -198,7 +200,7 @@ impl Process for PrintMessage {
 To add the system, we modify our call to the `systems!` macro to look like this:
 ```rust
 systems! {
-    MySystems<MyComponents> {
+    MySystems<MyComponents, ()> {
         print_msg: PrintMessage = PrintMessage("Hello World".to_string())
     }
 }
@@ -224,6 +226,7 @@ If we want to manually tell a system when to process, and not when `world.update
 ```rust
 impl System for PrintMessage {
     type Components = MyComponents;
+    type Services = ();
     fn is_active(&self) -> bool { false }
 }
 ```
@@ -267,12 +270,12 @@ pub struct MotionProcess;
 ```
 Implement `System`,
 ```rust
-impl System for MotionProcess { type Components = MyComponents; }
+impl System for MotionProcess { type Components = MyComponents; type Services = (); }
 ```
 And now we implement `EntityProcess` instead of `Process`:
 ```rust
 impl EntityProcess for MotionProcess {
-    fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents>) {
+    fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents, ()>) {
 
     }
 }
@@ -281,7 +284,7 @@ The only difference to `Process` is that we are passed in an `EntityIter`. An `E
 
 If we were trying to write less code, we'd probably want to implement `Add<Velocity>` for `Position`, but for the sake of simplicity we'll just add them together manually.
 ```rust
-fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents>) {
+fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<MyComponents, ()>) {
     for e in entities {
         let mut position = data.position[e];
         let velocity = data.velocity[e];
@@ -294,7 +297,7 @@ fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<
 Next, we have to add this to the systems definition:
 ```rust
 systems! {
-    MySystems<MyComponents> {
+    MySystems<MyComponents, ()> {
         motion: EntitySystem<MotionProcess> = EntitySystem::new(
             MotionProcess,
             aspect!(<MyComponents> all: [position, velocity])
@@ -339,7 +342,7 @@ More complicated functionality for aspects may be available in the future, but f
 Just to check the systems works, let's create an entity:
 ```rust
 let entity = world.create_entity(
-    |entity: BuildData, data: &mut MyComponents| {
+    |entity: BuildData<MyComponents>, data: &mut MyComponents| {
         data.position.add(&entity, Position { x: 0.0, y: 0.0 });
         data.velocity.add(&entity, Velocity { dx: 1.0, dy: 0.0 });
     }
@@ -351,8 +354,8 @@ world.update();
 ```
 If we check the value of the entity's position we should see it has moved 1 unit in the positive-x direction.
 ```rust
-world.with_entity_data(&entity, |en: EntityData, co: &mut MyComponents|
-    assert_eq!(Position { x: 1.0, y: 0.0 }, co.position[en])
+world.with_entity_data(&entity, |en, data|
+    assert_eq!(Position { x: 1.0, y: 0.0 }, data.position[en])
 );
 ```
 
