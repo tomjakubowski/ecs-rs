@@ -125,9 +125,9 @@ impl<C: ComponentManager, T: Component, U: EditData<C>> IndexMut<U> for Componen
     {
         match self.0
         {
-            Hot(ref mut c) => &mut c[en.entity().index()],
-            Cold(ref mut c) => &mut c[en.entity().index()],
-        }
+            Hot(ref mut c) => c.get_mut(&en.entity().index()),
+            Cold(ref mut c) => c.get_mut(&en.entity().index()),
+        }.expect(&format!("Could not find entry for {:?}", **en.entity()))
     }
 }
 
