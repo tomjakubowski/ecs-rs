@@ -155,7 +155,7 @@ impl<T: ComponentManager> EntityManager<T>
 
     pub fn indexed(&self, entity: &Entity) -> &IndexedEntity<T>
     {
-        &self.entities[*entity]
+        &self.entities[entity]
     }
 
     /// Creates a new `Entity`, assigning it the first available index.

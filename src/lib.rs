@@ -59,9 +59,9 @@ impl<'a, T: ComponentManager> Deref for EntityData<'a, T>
     }
 }
 
-impl<'a, T: ComponentManager> BuildData<'a, T> { pub fn clone(&self) -> BuildData<'a, T> { BuildData(self.0) } }
-impl<'a, T: ComponentManager> ModifyData<'a, T> { pub fn clone(&self) -> ModifyData<'a, T> { ModifyData(self.0) } }
-impl<'a, T: ComponentManager> EntityData<'a, T> { pub fn clone(&self) -> EntityData<'a, T> { EntityData(self.0) } }
+impl<'a, T: ComponentManager> Copy for BuildData<'a, T> {}
+impl<'a, T: ComponentManager> Copy for ModifyData<'a, T> {}
+impl<'a, T: ComponentManager> Copy for EntityData<'a, T> {}
 
 #[doc(hidden)]
 pub unsafe trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }

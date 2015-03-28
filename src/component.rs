@@ -109,19 +109,19 @@ impl<C: ComponentManager, T: Component> ComponentList<C, T>
 impl<C: ComponentManager, T: Component, U: EditData<C>> Index<U> for ComponentList<C, T>
 {
     type Output = T;
-    fn index(&self, en: &U) -> &T
+    fn index(&self, en: U) -> &T
     {
         match self.0
         {
             Hot(ref c) => &c[en.entity().index()],
-            Cold(ref c) => &c[en.entity().index()],
+            Cold(ref c) => &c[&en.entity().index()],
         }
     }
 }
 
 impl<C: ComponentManager, T: Component, U: EditData<C>> IndexMut<U> for ComponentList<C, T>
 {
-    fn index_mut(&mut self, en: &U) -> &mut T
+    fn index_mut(&mut self, en: U) -> &mut T
     {
         match self.0
         {
