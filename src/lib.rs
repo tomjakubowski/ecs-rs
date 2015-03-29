@@ -29,7 +29,6 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(core)]
 #![feature(collections)]
 
 pub use aspect::Aspect;
