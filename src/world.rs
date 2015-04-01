@@ -40,7 +40,7 @@ pub trait ServiceManager: 'static
 
 impl ServiceManager for () { fn new(){} }
 
-pub unsafe trait SystemManager: 'static
+pub unsafe trait SystemManager
 {
     type Components: ComponentManager;
     type Services: ServiceManager;
