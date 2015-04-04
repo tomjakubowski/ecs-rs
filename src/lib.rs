@@ -62,6 +62,10 @@ impl<'a, T: ComponentManager> Copy for BuildData<'a, T> {}
 impl<'a, T: ComponentManager> Copy for ModifyData<'a, T> {}
 impl<'a, T: ComponentManager> Copy for EntityData<'a, T> {}
 
+impl<'a, T: ComponentManager> Clone for BuildData<'a, T> {fn clone(&self) -> BuildData<'a, T> {*self}}
+impl<'a, T: ComponentManager> Clone for ModifyData<'a, T> {fn clone(&self) -> ModifyData<'a, T> {*self}}
+impl<'a, T: ComponentManager> Clone for EntityData<'a, T> {fn clone(&self) -> EntityData<'a, T> {*self}}
+
 #[doc(hidden)]
 pub unsafe trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }
 unsafe impl<'a, T: ComponentManager> EditData<T> for ModifyData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
