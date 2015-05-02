@@ -29,9 +29,6 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(collections)]
-#![feature(collections_drain)]
-
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList};
 pub use component::{EntityBuilder, EntityModifier};

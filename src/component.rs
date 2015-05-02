@@ -1,5 +1,5 @@
 
-use std::collections::{HashMap, VecMap};
+use std::collections::{HashMap};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -17,7 +17,7 @@ pub struct ComponentList<C: ComponentManager, T: Component>(InnerComponentList<T
 
 enum InnerComponentList<T: Component>
 {
-    Hot(VecMap<T>),
+    Hot(HashMap<usize, T>),
     Cold(HashMap<usize, T>),
 }
 
@@ -25,7 +25,7 @@ impl<C: ComponentManager, T: Component> ComponentList<C, T>
 {
     pub fn hot() -> ComponentList<C, T>
     {
-        ComponentList(Hot(VecMap::new()), PhantomData)
+        ComponentList(Hot(HashMap::new()), PhantomData)
     }
 
     pub fn cold() -> ComponentList<C, T>
@@ -113,7 +113,7 @@ impl<C: ComponentManager, T: Component, U: EditData<C>> Index<U> for ComponentLi
     {
         match self.0
         {
-            Hot(ref c) => &c[en.entity().index()],
+            Hot(ref c) => &c[&en.entity().index()],
             Cold(ref c) => &c[&en.entity().index()],
         }
     }
